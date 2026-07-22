@@ -1,0 +1,5 @@
+# Fallback deploy image while the full editable-install build is stalled.
+# Base image is the last verified Oracle build; copy only the reviewed P/L fixes.
+FROM oracle:latest
+COPY src/gungnir/core/agent.py /app/src/gungnir/core/agent.py
+COPY src/gungnir/dashboard/static/index.html /app/src/gungnir/dashboard/static/index.html
