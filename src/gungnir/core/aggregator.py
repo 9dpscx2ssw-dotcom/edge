@@ -73,8 +73,12 @@ class SignalAggregator:
     def __init__(self, *, veto_opposing: float = 0.35, ema_alpha: float = 0.6,
                  enter_threshold: float = 0.25, exit_threshold: float = 0.10,
                  min_hold_bars: int = 2, family_cap: float = 0.4,
+                 veto_exit_opposing: float = 1.0,
                  horizon_weights: dict[str, float] | None = None) -> None:
         self.veto_opposing = veto_opposing
+        # Force-exit an open position when opposition reaches this higher band.
+        # >=1.0 disables it (entry-veto only) — the default, preserving behaviour.
+        self.veto_exit_opposing = veto_exit_opposing
         self.ema_alpha = ema_alpha
         self.enter_threshold = enter_threshold
         # Exit band must sit below the entry band or hysteresis degenerates
@@ -228,6 +232,14 @@ class SignalAggregator:
         # In a position: hold inside the hysteresis band; exit on sign flip or
         # when conviction drains below the (lower) exit band.
         st.bars_held += 1
+        # Conflict exit: a genuinely split book (opposition past the higher exit
+        # band) shouldn't ride an open position. Overrides min_hold_bars because
+        # re-entry is itself veto-gated while the split persists, so it can't
+        # re-open into churn. Disabled when veto_exit_opposing >= 1.0.
+        if self.veto_exit_opposing < 1.0 and opp >= self.veto_exit_opposing:
+            st.bars_held = 0
+            return AggDecision(action="exit", side=position_side,
+                               strength=abs(ema), **base)
         flipped = side is not None and side != position_side
         drained = abs(ema) < self.exit_threshold
         if (flipped or drained) and st.bars_held > self.min_hold_bars:

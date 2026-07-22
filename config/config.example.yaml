@@ -253,14 +253,24 @@ learning:
 
 # Agent-managed exit ratchets on the virtual books. Static brackets alone let a
 # trade run to +XR then round-trip into a full-stop loss (the dominant PnL leak
-# in the 21–22 Jul sample: 36% of trades that reached +0.5R closed <=0). These
-# ratchets only ever TIGHTEN a stop in the trade's favour — they never widen
-# risk and never cap a runner (that would need a trailing stop, deliberately
-# omitted here; a mis-tuned trail clipped the fat tail net-negative in testing).
+# in the 21–22 Jul sample: 36% of trades that reached +0.5R closed <=0). Both
+# ratchets below only ever TIGHTEN a stop in the trade's favour, never widen it.
 exits:
-  breakeven_enabled: true    # once MFE >= trigger_r * initial risk, pull stop to entry
+  # Breakeven: once MFE >= trigger_r * initial risk, pull the stop to entry so a
+  # >=1R winner can no longer become a loss. Safe to run live (never caps upside).
+  breakeven_enabled: true
   breakeven_trigger_r: 1.0   # favourable excursion (in R) that arms breakeven
   breakeven_offset_r: 0.0    # lock this much R beyond entry (raise slightly to cover costs)
+  # Trailing: after +trailing_after_r, trail the stop trailing_atr_mult * ATR
+  # behind the running peak so runners keep running but reversals are caught.
+  # DEFAULT OFF — a mis-tuned trail clipped the fat tail net-negative in back-
+  # testing, and the ATR multiple can't be validated on excursion data alone.
+  # Enable it in shadow first (strategies paper-trade, so the shadow books are
+  # the observe environment) and confirm net-positive before any strategy goes
+  # live. Runs *after* breakeven, so the stop is already at/above entry.
+  trailing_enabled: false
+  trailing_after_r: 1.0      # favourable excursion (in R) before trailing arms
+  trailing_atr_mult: 1.5     # trail this many ATRs behind the peak price
 
 # Netted execution: strategies fill on per-strategy virtual books (journal/
 # allocator/RL attribution unchanged), while the account holds ONE net position
@@ -275,7 +285,11 @@ execution:
   # virtual stop on the net side × mult (pct of price when no virtual stop).
   # Wide by design — the agent's own exits fire first in normal operation.
   catastrophe_stop_mult: 1.5
-  catastrophe_stop_pct: 0.05
+  # Fallback distance when a net side has NO virtual stop to widen from. Lowered
+  # 0.05 -> 0.02 after the 21–22 Jul sample: broker-side dead-man closes did 79%
+  # of net-book damage (US100 alone -60 on 2). Only bites naked positions — with
+  # the breakeven ratchet most positions carry a virtual stop and use mult above.
+  catastrophe_stop_pct: 0.02
 
 # Consensus aggregation (opt-in): collapse all strategy stances into ONE
 # decision per symbol. Strategies keep shadow-trading individually (journal/
@@ -287,11 +301,18 @@ execution:
 aggregation:
   mode: "off"                # off | consensus
   veto_opposing: 0.35        # opposing vote share that blocks a NEW entry
+  # Force-exit an OPEN position when opposition reaches this (higher) band — a
+  # genuinely split book shouldn't ride a position. 1.0 disables (entry-veto
+  # only). Can't churn: re-entry is itself veto-gated while the split persists.
+  veto_exit_opposing: 0.45
   family_cap: 0.4            # max share of the vote one strategy family may hold
-  ema_alpha: 0.6             # consensus smoothing (1.0 = no smoothing)
-  enter_threshold: 0.25      # |consensus| needed to open
-  exit_threshold: 0.10       # |consensus| floor to stay in (must be < enter)
-  min_hold_bars: 2           # consensus exits blocked this many bars after entry
+  # Hysteresis widened from the 21–22 Jul sample, where consensus churned EURUSD
+  # (37 trades, 11 side-flips, 7-min median hold, -164). Wider bands + more
+  # smoothing + a longer min-hold cut the flip-flop that paid the spread twice.
+  ema_alpha: 0.4             # consensus smoothing (lower = smoother; was 0.6)
+  enter_threshold: 0.35      # |consensus| needed to open (was 0.25)
+  exit_threshold: 0.15       # |consensus| floor to stay in, must be < enter (was 0.10)
+  min_hold_bars: 4           # consensus exits blocked this many bars after entry (was 2)
 
 # Pre-trade compliance: hard rules applied to LIVE orders only.
 compliance:
@@ -343,7 +364,9 @@ filters:
   volatility: false   # skip dead chop / extreme (news-spike) volatility
   volume: false       # skip thin-volume bars (needs real volume data)
   session: false      # skip outside the instrument's liquid UTC hours
-  spread: false       # skip when the quoted spread (bps) is too wide
+  spread: true        # skip when the quoted spread (bps) is too wide — veto-only,
+                      # acts only when orderbook data exists; curbs the EURUSD
+                      # consensus churn that paid spread on every micro-reversal
   regime: true        # no mean-reversion in trends, no trend-following in ranges
   vol_min: 0.0001     # atr/price floor
   vol_max: 0.03       # atr/price ceiling

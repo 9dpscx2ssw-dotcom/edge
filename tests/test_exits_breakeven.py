@@ -13,7 +13,7 @@ from pathlib import Path
 
 from gungnir.config import Config
 from gungnir.core import filters
-from gungnir.core.agent import _breakeven_stop
+from gungnir.core.agent import _breakeven_stop, _trailing_stop
 from gungnir.core.filters import FilterConfig
 from gungnir.data.models import Side, Signal
 from gungnir.features.feature_store import KrakenFeatureSet
@@ -56,6 +56,38 @@ def test_breakeven_is_one_way_never_widens_risk():
 def test_breakeven_guards_degenerate_inputs():
     assert _breakeven_stop(Side.BUY, 100.0, None, 5.0, 2.0, 1.0, 0.0) is None   # no stop
     assert _breakeven_stop(Side.BUY, 100.0, 98.0, 5.0, 0.0, 1.0, 0.0) is None   # zero risk
+
+
+# ── Phase 3: trailing ratchet ─────────────────────────────────────────────────
+
+def test_trailing_long_follows_peak_by_atr_mult():
+    # long, peak 110, ATR 2, mult 1.5 → trail to 110 - 3 = 107 (above old stop).
+    assert _trailing_stop(Side.BUY, 110.0, 100.0, atr=2.0, trail_mult=1.5) == 107.0
+
+
+def test_trailing_short_follows_trough_upward_in_price():
+    # short, trough 90, ATR 2, mult 1.5 → trail to 90 + 3 = 93 (below old stop).
+    assert _trailing_stop(Side.SELL, 90.0, 100.0, atr=2.0, trail_mult=1.5) == 93.0
+
+
+def test_trailing_is_one_way_never_loosens():
+    # trail level (107) is looser than an already-tightened stop (108) → no move.
+    assert _trailing_stop(Side.BUY, 110.0, 108.0, atr=2.0, trail_mult=1.5) is None
+    assert _trailing_stop(Side.SELL, 90.0, 92.0, atr=2.0, trail_mult=1.5) is None
+
+
+def test_trailing_does_not_cap_a_runner():
+    # As the peak climbs, the trail climbs with it — a runner keeps its room
+    # instead of being locked at a fixed level.
+    s1 = _trailing_stop(Side.BUY, 110.0, 100.0, atr=2.0, trail_mult=1.5)
+    s2 = _trailing_stop(Side.BUY, 130.0, s1, atr=2.0, trail_mult=1.5)
+    assert s1 == 107.0 and s2 == 127.0
+
+
+def test_trailing_guards_degenerate_inputs():
+    assert _trailing_stop(Side.BUY, 110.0, None, 2.0, 1.5) is None   # no stop
+    assert _trailing_stop(Side.BUY, 110.0, 100.0, 0.0, 1.5) is None  # no ATR
+    assert _trailing_stop(Side.BUY, 110.0, 100.0, 2.0, 0.0) is None  # mult off
 
 
 # ── Phase 1: shipped regime_rules ─────────────────────────────────────────────
