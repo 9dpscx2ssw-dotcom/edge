@@ -62,6 +62,31 @@ def _rl_gate_healthy(recent_take_rate: float | None, diverged: bool) -> bool:
     return take_rate_ok and not diverged
 
 
+def _breakeven_stop(
+    side: Side,
+    entry_price: float,
+    cur_stop: float | None,
+    mfe: float,
+    r0: float,
+    trigger_r: float,
+    offset_r: float,
+) -> float | None:
+    """New stop level when a winning trade should ratchet to (near) breakeven.
+
+    Once max favourable excursion ``mfe`` (price units) reaches ``trigger_r`` of
+    the initial risk ``r0`` (also price units), pull the stop to ``entry_price``
+    shifted ``offset_r`` R into profit. One-way only: returns the new stop if it
+    tightens risk (up for longs, down for shorts), else ``None``. Never widens.
+    """
+    if cur_stop is None or r0 <= 0 or mfe < trigger_r * r0:
+        return None
+    if side == Side.BUY:
+        be = entry_price + offset_r * r0
+        return be if be > cur_stop else None
+    be = entry_price - offset_r * r0
+    return be if be < cur_stop else None
+
+
 class Agent:
     def __init__(
         self,
@@ -126,6 +151,12 @@ class Agent:
         # (mult × widest virtual stop; pct-of-price fallback; mult 0 disables).
         cat_mult = float(config.get("execution", "catastrophe_stop_mult", default=1.5) or 0)
         cat_pct = float(config.get("execution", "catastrophe_stop_pct", default=0.05) or 0)
+        # Agent-managed exit ratchets (see `exits:` in config). Breakeven pulls a
+        # winning trade's stop to entry once it has run breakeven_trigger_r of its
+        # initial risk in our favour, so a >=1R winner can't round-trip to a loss.
+        self._be_enabled = bool(config.get("exits", "breakeven_enabled", default=True))
+        self._be_trigger_r = float(config.get("exits", "breakeven_trigger_r", default=1.0) or 1.0)
+        self._be_offset_r = float(config.get("exits", "breakeven_offset_r", default=0.0) or 0.0)
         if self._netting:
             vet = None if isinstance(broker, PaperBroker) else self._vet_net_order
             self.broker = NettingBroker(
@@ -772,6 +803,25 @@ class Agent:
             for pos in broker.positions_for(symbol):
                 stop = pos.context.get("stop")
                 tp = pos.context.get("tp")
+                # Breakeven ratchet: capture the initial risk once (before we
+                # ever move the stop), then pull the stop to entry when the trade
+                # has run trigger_r in our favour. `mfe` is refreshed by the
+                # broker's mark() immediately before this call, so it's current.
+                if self._be_enabled and stop is not None and not pos.context.get("be"):
+                    r0 = pos.context.get("r0")
+                    if r0 is None:
+                        r0 = abs(pos.entry_price - stop)
+                        pos.context["r0"] = r0
+                    new_stop = _breakeven_stop(
+                        pos.side, pos.entry_price, stop,
+                        pos.context.get("mfe", 0.0) or 0.0, r0,
+                        self._be_trigger_r, self._be_offset_r)
+                    if new_stop is not None:
+                        pos.context["stop"] = stop = new_stop
+                        pos.context["be"] = True
+                        log.debug("Breakeven %s/%s: stop -> %.5f (mfe=%.5f r0=%.5f)",
+                                  symbol, pos.strategy, new_stop,
+                                  pos.context.get("mfe", 0.0), r0)
                 if pos.side == Side.BUY:
                     hit = (stop and price <= stop) or (tp and price >= tp)
                 else:

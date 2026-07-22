@@ -251,6 +251,17 @@ learning:
     decay: 0.99
     min_trades: 15
 
+# Agent-managed exit ratchets on the virtual books. Static brackets alone let a
+# trade run to +XR then round-trip into a full-stop loss (the dominant PnL leak
+# in the 21–22 Jul sample: 36% of trades that reached +0.5R closed <=0). These
+# ratchets only ever TIGHTEN a stop in the trade's favour — they never widen
+# risk and never cap a runner (that would need a trailing stop, deliberately
+# omitted here; a mis-tuned trail clipped the fat tail net-negative in testing).
+exits:
+  breakeven_enabled: true    # once MFE >= trigger_r * initial risk, pull stop to entry
+  breakeven_trigger_r: 1.0   # favourable excursion (in R) that arms breakeven
+  breakeven_offset_r: 0.0    # lock this much R beyond entry (raise slightly to cover costs)
+
 # Netted execution: strategies fill on per-strategy virtual books (journal/
 # allocator/RL attribution unchanged), while the account holds ONE net position
 # per symbol — a same-loop burst of duplicate signals becomes one order, and
@@ -333,12 +344,32 @@ filters:
   volume: false       # skip thin-volume bars (needs real volume data)
   session: false      # skip outside the instrument's liquid UTC hours
   spread: false       # skip when the quoted spread (bps) is too wide
-  regime: false       # no mean-reversion in trends, no trend-following in ranges
+  regime: true        # no mean-reversion in trends, no trend-following in ranges
   vol_min: 0.0001     # atr/price floor
   vol_max: 0.03       # atr/price ceiling
   min_volume_ratio: 0.5
   max_spread_bps: 15.0
   adx_trend: 25.0
+  # Strategy-family × market-regime policy. `evaluate_regime` vetoes a signal
+  # only when its family matches a rule below AND regime_mode is `enforce`.
+  # Ships in `shadow` (observe-only: counts would-be vetoes, blocks nothing) so
+  # the veto rate can be validated against live PnL before it gates the account.
+  # Flip to `enforce` once the shadow counts line up. `observe` disables it.
+  #   modes: observe | shadow | enforce
+  regime_mode: shadow
+  # Derived from the 21–22 Jul 2026 attribution sample: every (family, regime)
+  # bucket below carried negative expectancy over n>=8 trades. Re-fit these on
+  # your own out-of-sample window before trusting the exact list.
+  regime_rules:
+    - {family: ensemble,       regime: range_high, action: avoid}  # consensus chops in violent ranges
+    - {family: ensemble,       regime: range_low,  action: avoid}  # consensus dead in quiet ranges
+    - {family: trend,          regime: range_high, action: avoid}  # trend-following into chop
+    - {family: trend,          regime: range_low,  action: avoid}
+    - {family: hybrid,         regime: range_high, action: avoid}  # hma_dc whipsawed in chop
+    - {family: mean_reversion, regime: trend_high, action: avoid}  # MR fades a live trend
+    - {family: scalp,          regime: trend_high, action: avoid}  # scalps run over in fast trends
+    - {family: scalp,          regime: trend_low,  action: avoid}
+    - {family: structure,      regime: trend_high, action: avoid}  # fvg gaps overrun in trends
 
 # Offline RL (advisory; see learning/rl). offline_advisory loads + shadow-tracks
 # a trained policy; offline_gate (veto-only) lets it block signals it disagrees
