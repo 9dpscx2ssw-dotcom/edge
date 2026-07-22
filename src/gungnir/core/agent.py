@@ -87,6 +87,29 @@ def _breakeven_stop(
     return be if be < cur_stop else None
 
 
+def _trailing_stop(
+    side: Side,
+    peak_price: float,
+    cur_stop: float | None,
+    atr: float,
+    trail_mult: float,
+) -> float | None:
+    """New stop when a runner's stop should trail the peak by ``trail_mult`` ATR.
+
+    Unlike a fixed lock, this follows the running peak (``entry + mfe`` for a
+    long, ``entry - mfe`` for a short), so a big winner keeps its room while a
+    reversal is still caught ``trail_mult * atr`` back. One-way only: returns the
+    new stop if it tightens risk (up for longs, down for shorts), else ``None``.
+    """
+    if cur_stop is None or atr <= 0 or trail_mult <= 0:
+        return None
+    if side == Side.BUY:
+        t = peak_price - trail_mult * atr
+        return t if t > cur_stop else None
+    t = peak_price + trail_mult * atr
+    return t if t < cur_stop else None
+
+
 class Agent:
     def __init__(
         self,
@@ -157,6 +180,12 @@ class Agent:
         self._be_enabled = bool(config.get("exits", "breakeven_enabled", default=True))
         self._be_trigger_r = float(config.get("exits", "breakeven_trigger_r", default=1.0) or 1.0)
         self._be_offset_r = float(config.get("exits", "breakeven_offset_r", default=0.0) or 0.0)
+        # Trailing ratchet (off by default; validate in shadow before live). Once
+        # a trade has run trailing_after_r, trail the stop trailing_atr_mult ATRs
+        # behind the running peak so runners run but reversals are still caught.
+        self._trail_enabled = bool(config.get("exits", "trailing_enabled", default=False))
+        self._trail_after_r = float(config.get("exits", "trailing_after_r", default=1.0) or 1.0)
+        self._trail_atr_mult = float(config.get("exits", "trailing_atr_mult", default=1.5) or 1.5)
         if self._netting:
             vet = None if isinstance(broker, PaperBroker) else self._vet_net_order
             self.broker = NettingBroker(
@@ -341,6 +370,7 @@ class Agent:
         if str(agg_cfg.get("mode", "off")).lower() == "consensus":
             self._agg = SignalAggregator(
                 veto_opposing=float(agg_cfg.get("veto_opposing", 0.35)),
+                veto_exit_opposing=float(agg_cfg.get("veto_exit_opposing", 1.0)),
                 ema_alpha=float(agg_cfg.get("ema_alpha", 0.6)),
                 enter_threshold=float(agg_cfg.get("enter_threshold", 0.25)),
                 exit_threshold=float(agg_cfg.get("exit_threshold", 0.10)),
@@ -822,6 +852,26 @@ class Agent:
                         log.debug("Breakeven %s/%s: stop -> %.5f (mfe=%.5f r0=%.5f)",
                                   symbol, pos.strategy, new_stop,
                                   pos.context.get("mfe", 0.0), r0)
+                # Trailing ratchet: after the trade has run trailing_after_r,
+                # trail the stop trailing_atr_mult ATRs behind the running peak
+                # (entry ± mfe). Off by default; runs after breakeven so the stop
+                # is already protected. ATR is the fresh per-symbol value.
+                if self._trail_enabled and stop is not None:
+                    r0 = pos.context.get("r0")
+                    if r0 is None:
+                        r0 = abs(pos.entry_price - stop)
+                        pos.context["r0"] = r0
+                    mfe = pos.context.get("mfe", 0.0) or 0.0
+                    atr = float(self._last_view.get(symbol, {}).get("atr") or 0.0)
+                    if r0 and atr > 0 and mfe >= self._trail_after_r * r0:
+                        peak = (pos.entry_price + mfe if pos.side == Side.BUY
+                                else pos.entry_price - mfe)
+                        new_stop = _trailing_stop(pos.side, peak, stop, atr,
+                                                  self._trail_atr_mult)
+                        if new_stop is not None:
+                            pos.context["stop"] = stop = new_stop
+                            log.debug("Trail %s/%s: stop -> %.5f (peak=%.5f atr=%.5f)",
+                                      symbol, pos.strategy, new_stop, peak, atr)
                 if pos.side == Side.BUY:
                     hit = (stop and price <= stop) or (tp and price >= tp)
                 else:

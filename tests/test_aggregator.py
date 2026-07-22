@@ -153,3 +153,34 @@ def test_short_lane_can_enter_against_long_horizon_context():
     assert d.action == "enter" and d.side == Side.BUY
     lane = d.diagnostics["short_lane"]
     assert lane["n_stances"] == 1 and lane["ema_score"] > 0.25
+
+
+# ── Conflict-exit band (veto_exit_opposing) ───────────────────────────────────
+# A genuinely split book (opposition past a higher band) should force the
+# account out of an open position, overriding min_hold_bars. Re-entry stays
+# veto-gated while the split persists, so it cannot re-open into churn.
+
+def _split_book(a: SignalAggregator) -> None:
+    # BUY 5.4 vs SELL 4.5 → consensus ~+0.09 (still BUY), opposing ~0.4545.
+    a.set_stance("US100", "b1", Side.BUY, 3.0, family="trend")
+    a.set_stance("US100", "b2", Side.BUY, 3.0, family="meanrev")
+    a.set_stance("US100", "s1", Side.SELL, 5.0, family="oscillator")
+
+
+def test_conflict_exit_forces_out_and_overrides_min_hold():
+    a = _agg(veto_exit_opposing=0.45, exit_threshold=0.05,
+             min_hold_bars=100, family_cap=1.0)
+    _split_book(a)
+    d = _converge(a, "US100", pos=Side.BUY)
+    assert d.opposing >= 0.45
+    assert d.action == "exit" and d.side == Side.BUY
+
+
+def test_conflict_exit_disabled_by_default_holds_the_split():
+    # Same split, default veto_exit_opposing (1.0 = disabled): the low consensus
+    # still clears the exit band and the side hasn't flipped, so we hold.
+    a = _agg(exit_threshold=0.05, min_hold_bars=100, family_cap=1.0)
+    _split_book(a)
+    d = _converge(a, "US100", pos=Side.BUY)
+    assert d.opposing >= 0.45
+    assert d.action == "hold" and d.side == Side.BUY
