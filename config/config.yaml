@@ -265,6 +265,20 @@ learning:
     decay: 0.99
     min_trades: 15
 
+# Agent-managed exit ratchets on the virtual books. Both only ever TIGHTEN a
+# stop in the trade's favour, never widen it. Deployed 2026-07-23 following the
+# post-merge collapse review: breakeven was already active by code default
+# (config.get(..., default=True)) and confirmed working (give-back reduced to
+# 1 trade in the post-merge sample); this block makes that explicit and adds
+# trailing, still off, for shadow validation before any live strategy uses it.
+exits:
+  breakeven_enabled: true
+  breakeven_trigger_r: 1.0
+  breakeven_offset_r: 0.0
+  trailing_enabled: false
+  trailing_after_r: 1.0
+  trailing_atr_mult: 1.5
+
 # Netted execution: strategies fill on per-strategy virtual books (journal/
 # allocator/RL attribution unchanged), while the account holds ONE net position
 # per symbol — a same-loop burst of duplicate signals becomes one order, and
@@ -278,7 +292,10 @@ execution:
   # virtual stop on the net side × mult (pct of price when no virtual stop).
   # Wide by design — the agent's own exits fire first in normal operation.
   catastrophe_stop_mult: 1.5
-  catastrophe_stop_pct: 0.05
+  # Fallback distance when a net side has NO virtual stop to widen from. Lowered
+  # 0.05 -> 0.02 2026-07-23: broker-side dead-man closes were doing outsized
+  # damage to naked positions relative to the mult-based path.
+  catastrophe_stop_pct: 0.02
 
 # Consensus aggregation (opt-in): collapse all strategy stances into ONE
 # decision per symbol. Strategies keep shadow-trading individually (journal/
@@ -287,14 +304,28 @@ execution:
 # family-capped so correlated strategy clones can't manufacture agreement,
 # vetoed when the opposing side holds >= veto_opposing of the vote, and
 # smoothed with enter/exit hysteresis so the book stops flip-flopping.
+# NOTE: paused via data/control.json (consensus_mode: "off") as of 2026-07-23
+# after the post-merge review found it at PF 0.02 / 3.9% win rate — churning on
+# unwidened hysteresis with no conflict-exit. Config below is the corrected
+# target to re-enable against once validated; consensus_mode:off makes this
+# mode setting inert in the meantime (aggregator still builds shadow stances
+# for attribution, but _consensus_step returns immediately, so it fills no
+# shadow trades and books no PnL).
 aggregation:
   mode: "consensus"                # off | consensus
   veto_opposing: 0.35        # opposing vote share that blocks a NEW entry
+  # Force-exit an OPEN position when opposition reaches this (higher) band — a
+  # genuinely split book shouldn't ride a position. 1.0 disables (entry-veto
+  # only). Can't churn: re-entry is itself veto-gated while the split persists.
+  veto_exit_opposing: 0.45
   family_cap: 0.4            # max share of the vote one strategy family may hold
-  ema_alpha: 0.6             # consensus smoothing (1.0 = no smoothing)
-  enter_threshold: 0.25      # |consensus| needed to open
-  exit_threshold: 0.10       # |consensus| floor to stay in (must be < enter)
-  min_hold_bars: 2           # consensus exits blocked this many bars after entry
+  # Hysteresis widened 2026-07-23: post-merge consensus churned on the old
+  # bands (38.7% side-flip rate) for -658 in ~12h. Wider bands + more smoothing
+  # + a longer min-hold cut the flip-flop that pays the spread twice.
+  ema_alpha: 0.4             # consensus smoothing (lower = smoother; was 0.6)
+  enter_threshold: 0.35      # |consensus| needed to open (was 0.25)
+  exit_threshold: 0.15       # |consensus| floor to stay in, must be < enter (was 0.10)
+  min_hold_bars: 4           # consensus exits blocked this many bars after entry (was 2)
 
 # Pre-trade compliance: hard rules applied to LIVE orders only.
 compliance:
@@ -346,17 +377,52 @@ filters:
   volatility: false   # skip dead chop / extreme (news-spike) volatility
   volume: false       # skip thin-volume bars (needs real volume data)
   session: false      # skip outside the instrument's liquid UTC hours
-  spread: false       # skip when the quoted spread (bps) is too wide
-  regime: true        # strategy-aware policy; shadow-only, no execution veto
-  regime_mode: shadow
-  regime_policy_version: shadow-regime-v1
+  spread: true        # skip when the quoted spread (bps) is too wide — veto-only,
+                      # acts only when orderbook data exists
+  regime: true
+  # ENFORCE as of 2026-07-23: the post-merge collapse review found regime_mode
+  # had been left at "shadow" (non-blocking) for virtually the whole loss
+  # window, with only the 2 generic rules below — no coverage for ensemble/
+  # scalp/structure/hybrid at all. Every strategy family absorbed the same
+  # adverse conditions with nothing filtering it out. Going straight to
+  # enforce with the full rule set below rather than re-running another day of
+  # shadow-only validation, since the cost of further unprotected exposure now
+  # outweighs the fitting risk. Counterfactual on the post-merge sample: this
+  # ruleset alone would have removed 98 trades worth -424 of the -1388 loss.
+  regime_mode: enforce
+  regime_policy_version: strategy-regime-v2-20260723
+  # Derived from the 21-23 Jul attribution sample: every (family, regime)
+  # bucket below carried negative expectancy over n>=8 trades. Re-fit these
+  # periodically against fresh out-of-sample data rather than trusting them
+  # indefinitely.
   regime_rules:
-    - family: mean_reversion
-      regime: trend_high
-      action: avoid
+    - family: ensemble
+      regime: range_high
+      action: avoid          # consensus chops in violent ranges
+    - family: ensemble
+      regime: range_low
+      action: avoid          # consensus dead in quiet ranges
     - family: trend
       regime: range_high
+      action: avoid          # trend-following into chop
+    - family: trend
+      regime: range_low
       action: avoid
+    - family: hybrid
+      regime: range_high
+      action: avoid          # hma_dc whipsawed in chop
+    - family: mean_reversion
+      regime: trend_high
+      action: avoid          # MR fades a live trend
+    - family: scalp
+      regime: trend_high
+      action: avoid          # scalps run over in fast trends
+    - family: scalp
+      regime: trend_low
+      action: avoid
+    - family: structure
+      regime: trend_high
+      action: avoid          # fvg gaps overrun in trends
   vol_min: 0.0001     # atr/price floor
   vol_max: 0.03       # atr/price ceiling
   min_volume_ratio: 0.5
