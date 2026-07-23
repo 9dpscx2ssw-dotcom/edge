@@ -358,6 +358,16 @@ def create_app() -> FastAPI:
             "ts": st.get("ts"),
         })
 
+    @app.get("/api/consensus/evidence")
+    def consensus_evidence(limit: int = 100) -> JSONResponse:
+        """Read-only, lifecycle-joined consensus research evidence."""
+        db = _open_db()
+        try:
+            items = db.recent_consensus_evidence(limit=limit)
+        finally:
+            db.close()
+        return JSONResponse({"items": items, "count": len(items)})
+
     @app.get("/api/status")
     def status() -> JSONResponse:
         st = _status()

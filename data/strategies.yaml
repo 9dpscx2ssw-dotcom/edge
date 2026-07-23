@@ -1,7 +1,7 @@
 strategies:
 - name: trend_following
-  mode: shadow
-  enabled: true
+  mode: 'off'
+  enabled: false
   symbols: []
   excluded_symbols: []
   timeframe: 1h
@@ -83,6 +83,7 @@ strategies:
   timeframe: 15m
   params:
     period_cci: 14
+    cci_threshold: 115.8384
 - name: parsar_cci_ema
   mode: shadow
   enabled: true
@@ -92,6 +93,8 @@ strategies:
   params:
     period_cci: 45
     period_ema: 50
+    cci_threshold: 159.9414
+    conviction_base: 0.432
 - name: bb_macd_sma
   mode: shadow
   enabled: true
@@ -118,6 +121,10 @@ strategies:
   params:
     period_ema_fast: 5
     period_ema_slow: 10
+    rsi_mid: 45.7981
+    stoch_upper: 60.0714
+    stoch_lower: 38.1661
+    conviction_base: 0.6222
 - name: adx_momentum_ema
   mode: shadow
   enabled: true
@@ -128,6 +135,8 @@ strategies:
     period_adx: 14
     period_mom: 14
     period_ema: 55
+    adx_threshold: 17.6689
+    momentum_mid: 101.1048
 - name: bb_rsi_cutting
   mode: shadow
   enabled: true
@@ -164,8 +173,8 @@ strategies:
     period_teeth: 8
     period_lips: 5
 - name: hma_dc_m1
-  mode: shadow
-  enabled: true
+  mode: 'off'
+  enabled: false
   symbols: []
   excluded_symbols: []
   timeframe: 1m
@@ -209,8 +218,8 @@ strategies:
     period_hma: 55
     period_donchian: 20
 - name: fvg_m1
-  mode: shadow
-  enabled: true
+  mode: 'off'
+  enabled: false
   symbols: []
   excluded_symbols: []
   timeframe: 1m
@@ -236,18 +245,56 @@ strategies:
     lookback: 50
     min_body_ratio: 0.5
 - name: scalp_ema_vwap_m1
-  mode: shadow
-  enabled: true
+  mode: 'off'
+  enabled: false
   symbols: []
   excluded_symbols: []
   timeframe: 1m
   params:
     period_ema: 9
+    conviction_base: 0.8301
+    min_gap_bps: 6.4169
 - name: scalp_ema_vwap_m5
+  mode: 'off'
+  enabled: false
+  symbols: []
+  excluded_symbols: []
+  timeframe: 5m
+  params:
+    period_ema: 9
+    conviction_base: 0.3693
+    min_gap_bps: 6.2959
+- name: ema921_adx_dmi_m5
   mode: shadow
   enabled: true
   symbols: []
   excluded_symbols: []
   timeframe: 5m
   params:
-    period_ema: 9
+    adx_threshold: 25
+    conviction_base: 0.55
+- name: ema921_adx_dmi_m15
+  mode: shadow
+  enabled: true
+  symbols: []
+  excluded_symbols: []
+  timeframe: 15m
+  params:
+    adx_threshold: 25
+    conviction_base: 0.55
+- name: ema78_crossover_m5
+  mode: shadow
+  enabled: true
+  symbols: []
+  excluded_symbols: []
+  timeframe: 5m
+  params:
+    conviction_base: 0.55
+- name: ema78_crossover_m15
+  mode: shadow
+  enabled: true
+  symbols: []
+  excluded_symbols: []
+  timeframe: 15m
+  params:
+    conviction_base: 0.55

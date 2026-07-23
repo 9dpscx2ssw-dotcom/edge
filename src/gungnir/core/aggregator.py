@@ -152,8 +152,20 @@ class SignalAggregator:
         scale = {fam: (min(1.0, self.family_cap * total / fw)
                        if cap_on and fw > 0 else 1.0)
                  for fam, fw in fam_tot.items()}
-        eff = [(side, w * scale[fam], fam, hz)
-               for side, w, fam, hz in stances.values()]
+        vote_rows = []
+        eff = []
+        for strategy_id, (side, w, fam, hz) in stances.items():
+            horizon_weight = self.horizon_weights.get(hz, 1.0)
+            raw_weight = w / horizon_weight if horizon_weight else 0.0
+            effective_weight = w * scale[fam]
+            eff.append((side, effective_weight, fam, hz))
+            vote_rows.append({
+                "strategy_id": strategy_id, "family": fam, "horizon": hz,
+                "side": side.value, "raw_weight": round(raw_weight, 8),
+                "horizon_weight": round(horizon_weight, 8),
+                "family_scale": round(scale[fam], 8),
+                "effective_weight": round(effective_weight, 8),
+            })
         eff_total = sum(w for _, w, _, _ in eff)
         if eff_total <= 0:
             return 0.0, 0.0, {"raw_score": 0.0, "buy_weight": 0.0,
@@ -170,11 +182,13 @@ class SignalAggregator:
             entry["buy" if side == Side.BUY else "sell"] += w
             entry["weight"] += w
             horizons[hz] = horizons.get(hz, 0.0) + w
-        diag = {"raw_score": round(s, 4), "buy_weight": round(buy, 4),
-                "sell_weight": round(sell, 4), "effective_total": round(eff_total, 4),
-                "families": {k: {kk: round(vv, 4) for kk, vv in v.items()}
+        # Aggregate weights use persisted vote precision for exact replay reconciliation.
+        diag = {"raw_score": round(s, 4), "buy_weight": round(buy, 8),
+                "sell_weight": round(sell, 8), "effective_total": round(eff_total, 8),
+                "families": {k: {kk: round(vv, 8) for kk, vv in v.items()}
                              for k, v in families.items()},
-                "horizons": {k: round(v, 4) for k, v in horizons.items()}}
+                "horizons": {k: round(v, 8) for k, v in horizons.items()},
+                "votes": vote_rows}
         if s == 0.0:
             return 0.0, 0.5, diag             # perfectly split book
         losing = Side.SELL if s > 0 else Side.BUY

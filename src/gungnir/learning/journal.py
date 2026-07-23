@@ -45,8 +45,17 @@ class Journal:
         return self.db.recent_trades(strategy=strategy, limit=limit, closed_only=True)
 
     # ── signals ──
+    def record_consensus_verdict(self, **kw) -> None:
+        self.db.record_consensus_verdict(**kw)
+
     def record_consensus_decision(self, **kw) -> None:
         self.db.record_consensus_decision(**kw)
+
+    def record_consensus_lifecycle(self, **kw) -> None:
+        self.db.record_consensus_lifecycle(**kw)
+
+    def update_consensus_lifecycle(self, decision_id: str, **kw) -> None:
+        self.db.update_consensus_lifecycle(decision_id, **kw)
 
     def record_signal(self, signal: Signal, disposition: str, price: float | None,
                       **kw) -> int:

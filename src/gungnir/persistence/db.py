@@ -83,6 +83,36 @@ CREATE TABLE IF NOT EXISTS consensus_decisions (
 CREATE INDEX IF NOT EXISTS idx_consensus_decisions_experiment_ts
     ON consensus_decisions(experiment_id, ts);
 
+-- Decision-to-outcome ledger. One row is created for every consensus verdict;
+-- it is updated through guarded lifecycle transitions instead of being inferred
+-- from timestamps or client-id naming conventions.
+CREATE TABLE IF NOT EXISTS consensus_lifecycle (
+    decision_id TEXT PRIMARY KEY,
+    experiment_id TEXT NOT NULL,
+    ts TEXT NOT NULL,
+    symbol TEXT NOT NULL,
+    analytical_action TEXT NOT NULL,
+    analytical_reason TEXT NOT NULL,
+    side TEXT,
+    book TEXT NOT NULL,
+    feed_provenance TEXT NOT NULL,
+    config_snapshot_hash TEXT NOT NULL,
+    strategy_registry_hash TEXT NOT NULL,
+    code_version TEXT NOT NULL,
+    diagnostics TEXT NOT NULL,
+    terminal_state TEXT NOT NULL,
+    client_id TEXT,
+    trade_id TEXT,
+    realised_pnl REAL,
+    risk_rule TEXT,
+    risk_detail TEXT,
+    compliance_reason TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_consensus_lifecycle_ts ON consensus_lifecycle(ts);
+CREATE INDEX IF NOT EXISTS idx_consensus_lifecycle_terminal ON consensus_lifecycle(terminal_state);
+
 CREATE TABLE IF NOT EXISTS learning_events (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
     ts            TEXT NOT NULL,
@@ -151,7 +181,8 @@ class Database:
                          # Soft context at decision time, for the Signals tab:
                          # LLM sentiment score and the RL policy's P(take).
                          ("sentiment", "REAL"), ("rl_p", "REAL"),
-                         ("rejection_reason", "TEXT"), ("rejection_detail", "TEXT")):
+                         ("rejection_reason", "TEXT"), ("rejection_detail", "TEXT"),
+                         ("decision_id", "TEXT")):
             if col not in scols:
                 self.conn.execute(f"ALTER TABLE signals ADD COLUMN {col} {ddl}")
 
@@ -320,13 +351,43 @@ class Database:
 
     # ── consensus decisions ──────────────────────────────────────────────────
 
+    def record_consensus_verdict(self, *, decision_id: str, experiment_id: str,
+                                 ts: str, symbol: str, action: str,
+                                 side: str | None, score: float, opposing: float,
+                                 stance_count: int, diagnostics: dict,
+                                 disposition: str, analytical_reason: str,
+                                 book: str, feed_provenance: str,
+                                 config_snapshot_hash: str,
+                                 strategy_registry_hash: str, code_version: str) -> None:
+        """Persist one immutable verdict and its pending lifecycle atomically."""
+        now = _now()
+        with self.conn:
+            self.conn.execute(
+                """INSERT INTO consensus_decisions
+                   (decision_id,experiment_id,ts,symbol,action,side,score,opposing,
+                    stance_count,diagnostics,disposition,created_at)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (decision_id, experiment_id, ts, symbol, action, side, score, opposing,
+                 stance_count, json.dumps(diagnostics, sort_keys=True), disposition, now),
+            )
+            self.conn.execute(
+                """INSERT INTO consensus_lifecycle
+                   (decision_id,experiment_id,ts,symbol,analytical_action,analytical_reason,
+                    side,book,feed_provenance,config_snapshot_hash,strategy_registry_hash,
+                    code_version,diagnostics,terminal_state,created_at,updated_at)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (decision_id, experiment_id, ts, symbol, action, analytical_reason, side,
+                 book, feed_provenance, config_snapshot_hash, strategy_registry_hash,
+                 code_version, json.dumps(diagnostics, sort_keys=True), "pending", now, now),
+            )
+
     def record_consensus_decision(self, *, decision_id: str, experiment_id: str,
                                   ts: str, symbol: str, action: str,
                                   side: str | None, score: float, opposing: float,
                                   stance_count: int, diagnostics: dict,
                                   disposition: str) -> None:
         self.conn.execute(
-            """INSERT OR REPLACE INTO consensus_decisions
+            """INSERT INTO consensus_decisions
                (decision_id,experiment_id,ts,symbol,action,side,score,opposing,
                 stance_count,diagnostics,disposition,created_at)
                VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
@@ -335,6 +396,104 @@ class Database:
         )
         self.conn.commit()
 
+    # ── consensus lifecycle ─────────────────────────────────────────────────
+
+    def record_consensus_lifecycle(self, *, decision_id: str, experiment_id: str,
+                                   ts: str, symbol: str, analytical_action: str,
+                                   analytical_reason: str, side: str | None,
+                                   book: str, feed_provenance: str,
+                                   config_snapshot_hash: str,
+                                   strategy_registry_hash: str, code_version: str,
+                                   diagnostics: dict) -> None:
+        now = _now()
+        self.conn.execute(
+            """INSERT INTO consensus_lifecycle
+               (decision_id,experiment_id,ts,symbol,analytical_action,analytical_reason,
+                side,book,feed_provenance,config_snapshot_hash,strategy_registry_hash,
+                code_version,diagnostics,terminal_state,created_at,updated_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (decision_id, experiment_id, ts, symbol, analytical_action,
+             analytical_reason, side, book, feed_provenance, config_snapshot_hash,
+             strategy_registry_hash, code_version, json.dumps(diagnostics, sort_keys=True),
+             "pending", now, now),
+        )
+        self.conn.commit()
+
+    def update_consensus_lifecycle(self, decision_id: str, *, terminal_state: str,
+                                   client_id: str | None = None,
+                                   trade_id: str | None = None,
+                                   realised_pnl: float | None = None,
+                                   risk_rule: str | None = None,
+                                   risk_detail: dict | None = None,
+                                   compliance_reason: str | None = None) -> None:
+        row = self.conn.execute(
+            "SELECT terminal_state FROM consensus_lifecycle WHERE decision_id=?", (decision_id,)
+        ).fetchone()
+        if row is None:
+            raise KeyError(f"unknown consensus decision: {decision_id}")
+        prior = str(row["terminal_state"])
+        transitions = {
+            "pending": {"not_submitted", "opened_real", "opened_shadow", "rejected_risk",
+                        "rejected_compliance", "rejected_consensus", "failed_execution"},
+            "opened_real": {"closed", "failed_execution"},
+            "opened_shadow": {"closed", "failed_execution"},
+        }
+        if terminal_state not in transitions.get(prior, set()):
+            raise ValueError(f"invalid consensus lifecycle transition from terminal state: {prior} -> {terminal_state}")
+        self.conn.execute(
+            """UPDATE consensus_lifecycle SET terminal_state=?,
+               client_id=COALESCE(?, client_id), trade_id=COALESCE(?, trade_id),
+               realised_pnl=COALESCE(?, realised_pnl), risk_rule=COALESCE(?, risk_rule),
+               risk_detail=COALESCE(?, risk_detail), compliance_reason=COALESCE(?, compliance_reason), updated_at=?
+               WHERE decision_id=?""",
+            (terminal_state, client_id, trade_id, realised_pnl, risk_rule,
+             json.dumps(risk_detail, sort_keys=True) if risk_detail is not None else None,
+             compliance_reason, _now(), decision_id),
+        )
+        self.conn.commit()
+
+    def recent_consensus_evidence(self, limit: int = 100) -> list[dict]:
+        rows = self.conn.execute(
+            """SELECT cl.*, cd.decision_id AS decision_decision_id, cd.action AS decision_action,
+                      cd.disposition AS decision_disposition, cd.score AS decision_score,
+                      cd.opposing AS decision_opposing, cd.stance_count AS decision_stance_count,
+                      cd.diagnostics AS decision_diagnostics, s.id AS signal_id,
+                      s.client_id AS signal_client_id, s.disposition AS signal_disposition,
+                      s.pnl AS signal_pnl, s.rejection_reason AS signal_rejection_reason,
+                      t.id AS trade_row_id, t.symbol AS trade_symbol, t.side AS trade_side,
+                      t.mode AS trade_mode, t.pnl AS trade_pnl, t.entry_price AS trade_entry_price,
+                      t.exit_price AS trade_exit_price, t.opened_at AS trade_opened_at,
+                      t.closed_at AS trade_closed_at
+               FROM consensus_lifecycle cl
+               LEFT JOIN consensus_decisions cd ON cd.decision_id=cl.decision_id
+               LEFT JOIN signals s ON s.id=(SELECT s2.id FROM signals s2
+                   WHERE s2.decision_id=cl.decision_id ORDER BY s2.id DESC LIMIT 1)
+               LEFT JOIN trades t ON CAST(t.id AS TEXT)=cl.trade_id
+               ORDER BY cl.ts DESC LIMIT ?""",
+            (max(1, min(int(limit), 500)),),
+        ).fetchall()
+        out = []
+        for row in rows:
+            item = dict(row)
+            item["diagnostics"] = json.loads(item["diagnostics"])
+            item["risk_detail"] = json.loads(item["risk_detail"]) if item["risk_detail"] else None
+            decision_diagnostics = item.pop("decision_diagnostics")
+            item["decision"] = {"decision_id": item.pop("decision_decision_id"),
+                "action": item.pop("decision_action"), "disposition": item.pop("decision_disposition"),
+                "score": item.pop("decision_score"), "opposing": item.pop("decision_opposing"),
+                "stance_count": item.pop("decision_stance_count"),
+                "diagnostics": json.loads(decision_diagnostics) if decision_diagnostics else None}
+            item["signal"] = {"id": item.pop("signal_id"), "client_id": item.pop("signal_client_id"),
+                "disposition": item.pop("signal_disposition"), "pnl": item.pop("signal_pnl"),
+                "rejection_reason": item.pop("signal_rejection_reason")}
+            item["trade"] = {"id": item.pop("trade_row_id"), "symbol": item.pop("trade_symbol"),
+                "side": item.pop("trade_side"), "mode": item.pop("trade_mode"),
+                "pnl": item.pop("trade_pnl"), "entry_price": item.pop("trade_entry_price"),
+                "exit_price": item.pop("trade_exit_price"), "opened_at": item.pop("trade_opened_at"),
+                "closed_at": item.pop("trade_closed_at")}
+            out.append(item)
+        return out
+
     # ── signals ──────────────────────────────────────────────────────────────
 
     def record_signal(self, signal: Signal, disposition: str, price: float | None,
@@ -342,18 +501,20 @@ class Database:
                       stop_loss: float | None = None, client_id: str | None = None,
                       sentiment: float | None = None, rl_p: float | None = None,
                       rejection_reason: str | None = None,
-                      rejection_detail: dict | None = None) -> int:
+                      rejection_detail: dict | None = None,
+                      decision_id: str | None = None) -> int:
         cur = self.conn.execute(
             """INSERT INTO signals
                (ts, strategy, symbol, side, conviction, price, disposition, rationale,
                 lot, take_profit, stop_loss, client_id, sentiment, rl_p,
-                rejection_reason, rejection_detail)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                rejection_reason, rejection_detail, decision_id)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 signal.ts.isoformat(), signal.strategy, signal.symbol, signal.side.value,
                 signal.conviction, price, disposition, signal.rationale,
                 lot, take_profit, stop_loss, client_id, sentiment, rl_p,
                 rejection_reason, json.dumps(rejection_detail) if rejection_detail else None,
+                decision_id,
             ),
         )
         self.conn.commit()

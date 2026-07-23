@@ -1,0 +1,7 @@
+{
+  "account_books": 0,
+  "legacy": "virtual_books.json",
+  "legacy_sha256": "c505ecdfdeed9c93f58f06730a21b58573766cfb8251c78f8e599e53adbcaff6",
+  "reason": "split account and shadow NettingBroker ledgers; legacy preserved",
+  "shadow_books": 37
+}

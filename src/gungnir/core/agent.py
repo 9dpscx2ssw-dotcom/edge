@@ -8,7 +8,10 @@ summary of how the whole system flows.
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import json
 import logging
+import os
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -906,11 +909,33 @@ class Agent:
         direction = 1 if p.side == Side.BUY else -1
         return round(direction * (mark - p.entry_price) * (p.volume or 0.0), 2)
 
-    async def _close(self, broker, symbol: str, ctx: dict, strategy: str | None = None) -> None:
+    async def _close(self, broker, symbol: str, ctx: dict, strategy: str | None = None) -> bool:
         closed = await broker.close(symbol, strategy)
         if not closed:
-            return
+            return False
         self._record_closed_trade(closed, ctx)
+        return True
+
+    def _consensus_lineage_metadata(self) -> dict[str, str]:
+        """Return non-secret, deterministic provenance for one consensus decision."""
+        config_snapshot = json.dumps(
+            {"consensus": self.config.get("consensus", default={}) or {},
+             "risk": self.config.get("risk", default={}) or {}},
+            sort_keys=True, default=str,
+        )
+        strategies = [{
+            "name": getattr(s, "name", s.__class__.__name__),
+            "mode": getattr(s, "mode", None), "family": getattr(s, "family", None),
+            "timeframe": getattr(s, "timeframe", None),
+        } for s in self.strategies.active()]
+        registry_snapshot = json.dumps(sorted(strategies, key=lambda x: x["name"]),
+                                       sort_keys=True, default=str)
+        return {
+            "config_snapshot_hash": hashlib.sha256(config_snapshot.encode()).hexdigest(),
+            "strategy_registry_hash": hashlib.sha256(registry_snapshot.encode()).hexdigest(),
+            "code_version": os.getenv("GUNGNIR_CODE_VERSION", "unversioned"),
+            "feed_provenance": type(self.market).__name__,
+        }
 
     def _account_is_paper(self) -> bool:
         """True when the ultimate account is a PaperBroker (dry-run), looking
@@ -981,7 +1006,16 @@ class Agent:
                 if closed.mode == "real" and self._closed_pl is not None:
                     self._closed_pl += closed.pnl
             self._metrics_dirty.add(closed.strategy or "")
-            self.journal.record(closed, context=ctx)
+            trade_id = self.journal.record(closed, context=ctx)
+            decision_id = (closed.context or {}).get("decision_id")
+            if decision_id and closed.strategy == "consensus":
+                try:
+                    self.journal.update_consensus_lifecycle(
+                        decision_id, terminal_state="closed", trade_id=str(trade_id),
+                        realised_pnl=closed.pnl,
+                    )
+                except (KeyError, ValueError) as e:
+                    log.warning("Consensus lifecycle close update failed for %s: %s", decision_id, e)
             # Grade the originating signal (WIN/LOSS on the Signals tab).
             cid = (closed.context or {}).get("client_id")
             if cid and closed.pnl is not None:
@@ -1326,12 +1360,26 @@ class Agent:
         )
         if hard_conflict:
             d.action = "veto"
-        self.journal.record_consensus_decision(
-            decision_id=decision_id, experiment_id=experiment_id,
-            ts=operator_now().isoformat(), symbol=symbol, action=d.action,
-            side=d.side.value if d.side is not None else None, score=d.consensus,
-            opposing=d.opposing, stance_count=d.n_stances, diagnostics=d.diagnostics,
+        decision_ts = operator_now().isoformat()
+        if d.action == "none":
+            analytical_reason = "empty_stances" if d.n_stances == 0 else "below_entry"
+        elif d.action == "veto":
+            analytical_reason = "conflict_gate" if hard_conflict else "opposition_veto"
+        elif d.action == "hold":
+            analytical_reason = "hysteresis_hold"
+        elif d.action == "exit":
+            analytical_reason = "exit_rule"
+        else:
+            analytical_reason = "entry_threshold"
+        lineage = self._consensus_lineage_metadata()
+        lifecycle_book = "real" if go_live else "consensus_shadow"
+        self.journal.record_consensus_verdict(
+            decision_id=decision_id, experiment_id=experiment_id, ts=decision_ts,
+            symbol=symbol, action=d.action, side=d.side.value if d.side is not None else None,
+            score=d.consensus, opposing=d.opposing, stance_count=d.n_stances,
+            diagnostics=d.diagnostics,
             disposition="rejected_consensus_conflict" if hard_conflict else d.action,
+            analytical_reason=analytical_reason, book=lifecycle_book, **lineage,
         )
         self._consensus_stats[f"action_{d.action}"] += 1
         if d.action == "none":
@@ -1368,11 +1416,18 @@ class Agent:
                 "diagnostics": d.diagnostics,
             }
         if d.action in ("none", "hold"):
+            self.journal.update_consensus_lifecycle(decision_id, terminal_state="not_submitted")
             return
         if d.action == "exit":
             log.info("Consensus exit %s: score %+.2f, opposing %.0f%%",
                      symbol, d.consensus, d.opposing * 100)
-            await self._close(_exec_broker, symbol, ctx, "consensus")
+            # Keep the entry decision on the closed trade; the exit verdict is a separate event.
+            closed = await self._close(
+                _exec_broker, symbol, {**ctx, "exit_decision_id": decision_id}, "consensus"
+            )
+            self.journal.update_consensus_lifecycle(
+                decision_id, terminal_state="closed" if closed else "failed_execution"
+            )
             return
 
         assert d.side is not None
@@ -1385,8 +1440,9 @@ class Agent:
             # Conflicted book — stand aside, but journal it so the Signals tab
             # shows why nothing traded.
             self._filter_rejects["consensus_conflict"] += 1
-            self.journal.record_signal(sig, "rejected_consensus",
-                                       features.last_price)
+            self.journal.record_signal(sig, "rejected_consensus", features.last_price,
+                                       decision_id=decision_id)
+            self.journal.update_consensus_lifecycle(decision_id, terminal_state="rejected_consensus")
             return
 
         # d.action == "enter" — one account order in the consensus direction.
@@ -1406,7 +1462,11 @@ class Agent:
             self._filter_rejects["consensus_risk"] += 1
             self.journal.record_signal(sig, "rejected_risk", features.last_price,
                                        rejection_reason=rejection.get("rule"),
-                                       rejection_detail=rejection)
+                                       rejection_detail=rejection, decision_id=decision_id)
+            self.journal.update_consensus_lifecycle(
+                decision_id, terminal_state="rejected_risk",
+                risk_rule=rejection.get("rule"), risk_detail=rejection,
+            )
             await self._open_risk_counterfactual(
                 sig, raw, features, book=book, regime=None, rejection=rejection)
             return
@@ -1416,8 +1476,11 @@ class Agent:
                 log.warning("Compliance blocked consensus %s %s: %s",
                             order.side.value, symbol, why)
                 self._filter_rejects["consensus_compliance"] += 1
-                self.journal.record_signal(sig, "rejected_compliance",
-                                           features.last_price)
+                self.journal.record_signal(sig, "rejected_compliance", features.last_price,
+                                           decision_id=decision_id)
+                self.journal.update_consensus_lifecycle(
+                    decision_id, terminal_state="rejected_compliance", compliance_reason=why,
+                )
                 self.audit.record("order_blocked_compliance", symbol=symbol,
                                   strategy="consensus", side=order.side.value,
                                   volume=order.volume, reason=why)
@@ -1431,6 +1494,16 @@ class Agent:
                               entry=trade.entry_price, stop=order.stop_loss,
                               tp=order.take_profit,
                               deal_id=(trade.context or {}).get("deal_id"))
+        if not trade:
+            self.journal.record_signal(
+                sig, "failed_execution", features.last_price,
+                lot=order.volume, take_profit=order.take_profit, stop_loss=order.stop_loss,
+                client_id=order.client_id, decision_id=decision_id,
+            )
+            self.journal.update_consensus_lifecycle(
+                decision_id, terminal_state="failed_execution", client_id=order.client_id,
+            )
+            return
         if trade:
             log.info("Consensus enter %s %s: score %+.2f from %d stances, "
                      "opposing %.0f%%, vol %.4f", order.side.value, symbol,
@@ -1438,7 +1511,8 @@ class Agent:
             trade.mode = "real" if go_live else "shadow"
             trade.context = {**(trade.context or {}),
                              "confidence": round(sig.conviction, 3),
-                             "client_id": order.client_id, "regime": regime}
+                             "client_id": order.client_id, "decision_id": decision_id,
+                             "regime": regime}
             book = "real" if go_live else "consensus_shadow"
             exposure = self.risk.exposure_for(book)
             exposure[symbol] = exposure.get(symbol, 0.0) + abs(
@@ -1447,8 +1521,13 @@ class Agent:
             sig, "real" if go_live else "shadow", features.last_price,
             lot=order.volume, take_profit=order.take_profit,
             stop_loss=order.stop_loss, client_id=order.client_id,
+            decision_id=decision_id,
             cost_model=self._paper_cost.audit_snapshot(validation_status=str(
                 self.config.get("costs", "validation_status", default="unvalidated"))))
+        self.journal.update_consensus_lifecycle(
+            decision_id, terminal_state="opened_real" if go_live else "opened_shadow",
+            client_id=order.client_id,
+        )
 
     async def _process_symbol(self, symbol: str) -> None:
         # Market status is a hard gate for both virtual strategy fills and the
