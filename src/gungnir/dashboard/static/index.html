@@ -1528,9 +1528,9 @@ async function loadStrategies(){
           <span class="sc-num">${stratLabel}</span>
           <span class="sc-name">${s.name}</span>
           <div class="mode-seg" title="off = disabled · shadow = paper-trade only · live = real orders on the connected account">
-            <button class="ms-btn ${md==='off'?'on-off':''}" onclick="${isConsensus?'setConsensusMode(\'off\')':"setStratMode('${s.name}','off')"}">OFF</button>
-            <button class="ms-btn ${md==='shadow'?'on-shadow':''}" onclick="${isConsensus?'setConsensusMode(\'shadow\')':"setStratMode('${s.name}','shadow')"}">SHDW</button>
-            <button class="ms-btn ${md==='live'?'on-live':''}" onclick="${isConsensus?'setConsensusMode(\'live\')':"setStratMode('${s.name}','live')"}">LIVE</button>
+            <button class="ms-btn ${md==='off'?'on-off':''}" onclick="${isConsensus?'setConsensusMode(\'off\')':`setStratMode('${s.name}','off')`}">OFF</button>
+            <button class="ms-btn ${md==='shadow'?'on-shadow':''}" onclick="${isConsensus?'setConsensusMode(\'shadow\')':`setStratMode('${s.name}','shadow')`}">SHDW</button>
+            <button class="ms-btn ${md==='live'?'on-live':''}" onclick="${isConsensus?'setConsensusMode(\'live\')':`setStratMode('${s.name}','live')`}">LIVE</button>
           </div>
         </div>
         <div class="sc-desc"><b style="color:var(--cyan)">${s.timeframe||'—'}</b> · ${s.indicators||''}${(s.excluded_symbols&&s.excluded_symbols.length)?`<br><span style="color:var(--amber);font-size:11px" title="${s.excluded_symbols.join(', ')}">⛔ ${s.excluded_symbols.length} symbol${s.excluded_symbols.length>1?'s':''} pruned (learned)</span>`:''}</div>
