@@ -13,9 +13,22 @@ _CATEGORIES = {
     "Crypto": {"BTCUSD", "ETHUSD", "XRPUSD", "SOLUSD", "DOGEUSD", "ADAUSD", "LTCUSD", "XBTUSD"},
 }
 # Unknown names are intentionally not inferred as trend-following.
+# Every registered strategy must appear here or it resolves to "unknown" and
+# silently bypasses ALL regime avoid rules. The 24 Jul external audits found 10
+# names missing (trend + oscillator), so a third of the book was ungated even
+# with regime enforce ON. `test_every_strategy_has_a_family` guards regressions.
 STRATEGY_FAMILIES = {
     "mean_reversion": "mean_reversion", "cci_reversal": "mean_reversion", "bb_rsi": "mean_reversion", "multi_bb": "mean_reversion", "bb_macd_sma": "mean_reversion", "bb_rsi_cutting": "mean_reversion",
     "parsar_cci_ema": "trend", "adx_momentum_ema": "trend", "alligator": "trend", "trend_following": "trend",
+    # Previously-missing trend strategies (mapped 24 Jul): fresh EMA/CCI/ADX
+    # crosses and pivots — subject to the trend × range_high/range_low avoid rule.
+    "ema78_crossover_m5": "trend", "ema78_crossover_m15": "trend",
+    "ema921_adx_dmi_m5": "trend", "ema921_adx_dmi_m15": "trend",
+    "cci_macd": "trend", "cci200_ema_pivot": "trend", "intelligent_trading": "trend",
+    # Oscillator strategies (mapped 24 Jul for correct lineage; no oscillator
+    # avoid rule ships yet — no evidence — so this fixes attribution without
+    # imposing an unvalidated gate).
+    "macd_stoch": "oscillator", "ema_stoch_rsi": "oscillator", "ao_macd": "oscillator",
     "fvg_m1": "structure", "fvg_m5": "structure", "fvg_m15": "structure", "fvg_m30": "structure",
     "scalp_ema_vwap_m1": "scalp", "scalp_ema_vwap_m5": "scalp",
     "hma_dc_m1": "hybrid", "hma_dc_m5": "hybrid", "hma_dc_m15": "hybrid", "hma_dc_h1": "hybrid", "hma_dc_h4": "hybrid", "hma_dc_d1": "hybrid", "consensus": "ensemble",

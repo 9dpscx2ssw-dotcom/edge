@@ -77,8 +77,12 @@ class SignalAggregator:
                  veto_exit_opposing: float = 1.0,
                  short_lane_enabled: bool = True,
                  reentry_cooldown_bars: int = 0,
+                 min_effective_vote: float = 0.0,
                  horizon_weights: dict[str, float] | None = None) -> None:
         self.veto_opposing = veto_opposing
+        # Block a NEW entry when the effective (family-capped) vote weight is
+        # below this floor — collapsed/near-zero vote entries were ~0% win.
+        self.min_effective_vote = max(0.0, min_effective_vote)
         # Force-exit an open position when opposition reaches this higher band.
         # >=1.0 disables it (entry-veto only) — the default, preserving behaviour.
         self.veto_exit_opposing = veto_exit_opposing
@@ -239,6 +243,15 @@ class SignalAggregator:
 
         if position_side is None:
             st.bars_held = 0
+            # Zero-effective-vote guard: when family-capping / cancellation
+            # collapses the effective vote weight to ~0, any entry is noise. The
+            # 24 Jul audits found this cohort at ~0% win / large loss and it is
+            # the only exact-screenable consensus repair; excluding it flipped
+            # retained consensus positive. 0.0 disables (backward compatible).
+            if self.min_effective_vote > 0.0:
+                eff_total = float(diag.get("effective_total", 0.0) or 0.0)
+                if eff_total < self.min_effective_vote:
+                    return AggDecision(action="none", **base)
             # Re-entry cooldown: after an exit, stand aside for N passes so an
             # exit doesn't immediately reopen into cost-bleed churn.
             if st.cooldown > 0:

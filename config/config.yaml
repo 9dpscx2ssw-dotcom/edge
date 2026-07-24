@@ -335,6 +335,11 @@ aggregation:
   # After any consensus exit, block re-entry on that symbol for this many
   # decide() passes — a cost-bleed guard against exit→reopen churn.
   reentry_cooldown_bars: 3
+  # Zero-effective-vote guard (2026-07-24). Block a consensus entry when the
+  # family-capped effective vote weight collapses below this floor — the 24 Jul
+  # audits found that cohort at ~0% win / large loss, and excluding it flipped
+  # retained consensus positive (+12 / 54% win). 0.0 disables.
+  min_effective_vote: 0.05
 
 # Pre-trade compliance: hard rules applied to LIVE orders only.
 compliance:

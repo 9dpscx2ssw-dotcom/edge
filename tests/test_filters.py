@@ -240,3 +240,24 @@ def test_timeframe_gate_in_apply_vetoes_sub_floor_strategy():
 def test_timeframe_fields_from_dict():
     fc = FilterConfig.from_dict({"timeframe": True, "min_timeframe_minutes": 30})
     assert fc.timeframe is True and fc.min_timeframe_minutes == 30.0
+
+
+# ── Regime-family map completeness (24 Jul audit: 10 names were unmapped) ──────
+
+def test_every_registered_strategy_has_a_family():
+    """Any registered strategy missing from STRATEGY_FAMILIES resolves to
+    'unknown' and silently bypasses every regime avoid rule. Guard that."""
+    import yaml
+    from pathlib import Path
+    names = {s["name"] for s in yaml.safe_load(
+        (Path(__file__).resolve().parent.parent / "config/strategies.yaml").read_text())["strategies"]}
+    missing = {n for n in names if filters.strategy_family(n) == "unknown"}
+    assert not missing, f"strategies missing from STRATEGY_FAMILIES: {sorted(missing)}"
+
+
+def test_previously_unmapped_trend_strategies_now_gated():
+    cfg = FilterConfig(regime=True, regime_mode="enforce", regime_rules=[
+        {"family": "trend", "regime": "range_high", "action": "avoid"}])
+    for strat in ("ema78_crossover_m5", "cci_macd", "cci200_ema_pivot", "ema921_adx_dmi_m5"):
+        assert filters.strategy_family(strat) == "trend"
+        assert filters.apply(_sig(), _feat(), strat, cfg, "EURUSD", regime="range_high") == (False, "regime")

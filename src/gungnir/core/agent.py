@@ -381,6 +381,7 @@ class Agent:
                 family_cap=float(agg_cfg.get("family_cap", 0.4)),
                 short_lane_enabled=bool(agg_cfg.get("short_lane_enabled", True)),
                 reentry_cooldown_bars=int(agg_cfg.get("reentry_cooldown_bars", 0)),
+                min_effective_vote=float(agg_cfg.get("min_effective_vote", 0.0)),
                 horizon_weights=agg_cfg.get("horizon_weights", {}),
             )
             log.info("Consensus aggregation ON (veto %.0f%%, family cap %.0f%%)",
@@ -882,11 +883,16 @@ class Agent:
                 else:
                     hit = (stop and price >= stop) or (tp and price <= tp)
                 if hit:
-                    # Diagnostic: log why position is being closed
-                    reason = "stop-loss" if (stop and ((pos.side == Side.BUY and price <= stop) or (pos.side == Side.SELL and price >= stop))) else "take-profit"
+                    is_stop = stop and ((pos.side == Side.BUY and price <= stop) or (pos.side == Side.SELL and price >= stop))
+                    # Distinguish a breakeven-ratcheted stop from the original
+                    # stop so exit attribution can separate "protected scratch"
+                    # from "thesis stop-out".
+                    reason = ("breakeven-stop" if is_stop and pos.context.get("be")
+                              else "stop-loss" if is_stop else "take-profit")
                     log.debug("Exit triggered for %s: %s at %.5f (entry: %.5f, stop: %s, tp: %s)",
                              symbol, reason, price, pos.entry_price, stop, tp)
-                    await self._close(broker, symbol, self._last_view.get(symbol, {}), pos.strategy)
+                    await self._close(broker, symbol, self._last_view.get(symbol, {}),
+                                      pos.strategy, reason=reason)
 
     async def _instrument_min(self, symbol: str) -> float:
         """Broker minimum deal size for a symbol (cached); 0 if unknown."""
@@ -911,10 +917,18 @@ class Agent:
         direction = 1 if p.side == Side.BUY else -1
         return round(direction * (mark - p.entry_price) * (p.volume or 0.0), 2)
 
-    async def _close(self, broker, symbol: str, ctx: dict, strategy: str | None = None) -> bool:
+    async def _close(self, broker, symbol: str, ctx: dict, strategy: str | None = None,
+                     reason: str | None = None) -> bool:
         closed = await broker.close(symbol, strategy)
         if not closed:
             return False
+        # Persist the exit reason (stop-loss / take-profit / breakeven-stop / …)
+        # on the closed trade so it survives into the journal — the audits found
+        # most closes recorded as "unrecorded", blocking all exit attribution.
+        # journal.record merges {**trade.context, **ctx}, so setting it here is
+        # authoritative and lands in the persisted context.
+        if reason is not None:
+            closed.context = {**(closed.context or {}), "close_reason": reason}
         self._record_closed_trade(closed, ctx)
         return True
 
@@ -2033,6 +2047,13 @@ class Agent:
                     # can't block while it is untrustworthy.
                     gate_healthy = _rl_gate_healthy(rate, self._rl_diverged)
                     take = decision.take if (self._rl_gate and gate_healthy) else True
+                    # Tag fail-open/override fills so future audits can isolate
+                    # the cohort: the 24 Jul audits found gate-approved trades
+                    # (rl_p>=take) profitable while fail-open/warmup fills held
+                    # the entire loss. Persisted on the opened trade context below.
+                    self._rl_fail_open = bool(self._rl_gate and not gate_healthy
+                                              and not decision.take)
+                    self._rl_gate_healthy = bool(gate_healthy)
                     # Would have skipped, but the unhealthy policy was overridden:
                     # record the bypass on the live path for the audit trail.
                     if (self._rl_gate and not gate_healthy and not decision.take
@@ -2142,6 +2163,8 @@ class Agent:
                     trade.context = {**(trade.context or {}),
                                      "confidence": round(signal.conviction, 3),
                                      "client_id": order.client_id,
+                                     "rl_fail_open": getattr(self, "_rl_fail_open", False),
+                                     "rl_gate_healthy": getattr(self, "_rl_gate_healthy", True),
                                      "regime": regime}
                     # Track exposure intra-loop in the order's own book so every
                     # strategy remains subject to its own risk caps before the next

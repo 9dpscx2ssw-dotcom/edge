@@ -244,3 +244,21 @@ def test_cooldown_zero_allows_immediate_reentry():
         pass
     a.set_stance("US100", "b1", Side.BUY, 5.0, family="A", horizon="1H")
     assert _converge(a, "US100").action == "enter"            # no cooldown gate
+
+
+# ── Zero-effective-vote guard (24 Jul audit: near-zero-vote entries ~0% win) ───
+
+def test_min_effective_vote_blocks_collapsed_vote_entry():
+    # Family cap collapses a single-family clone bloc; with a floor above the
+    # resulting effective weight, the entry is blocked as noise.
+    a = _agg(min_effective_vote=100.0)  # floor above any realistic eff_total here
+    a.set_stance("US100", "b1", Side.BUY, 5.0, family="A", horizon="1H")
+    a.set_stance("US100", "b2", Side.BUY, 5.0, family="A", horizon="1H")
+    d = _converge(a, "US100")
+    assert d.action == "none"                      # collapsed/tiny vote → stand aside
+
+
+def test_min_effective_vote_zero_is_backward_compatible():
+    a = _agg(min_effective_vote=0.0)               # disabled
+    a.set_stance("US100", "b1", Side.BUY, 5.0, family="A", horizon="1H")
+    assert _converge(a, "US100").action == "enter"  # normal entry unaffected
