@@ -1215,6 +1215,9 @@ volumes:
           <label class="flt-item"><span>Spread</span><label class="switch"><input type="checkbox" id="flt-spread"><span class="slider"></span></label></label>
           <label class="flt-item"><span>Regime</span><label class="switch"><input type="checkbox" id="flt-regime"><span class="slider"></span></label></label>
           <label class="flt-item" title="When enabled, matching configured family × regime rules block entries. When disabled, matches are recorded as shadow observations only."><span>Enforce regime veto</span><label class="switch"><input type="checkbox" id="flt-regime-enforce"><span class="slider"></span></label></label>
+          <label class="flt-item" title="No-trend-structure filter: skip entries where the fast/slow EMA spread is below the ATR threshold (chop / no established trend)."><span>Noise</span><label class="switch"><input type="checkbox" id="flt-noise"><span class="slider"></span></label></label>
+          <label class="flt-item" title="When enabled, noise-flagged entries are blocked. When disabled, they are tagged only (observe)."><span>Enforce noise veto</span><label class="switch"><input type="checkbox" id="flt-noise-enforce"><span class="slider"></span></label></label>
+          <label class="flt-item" title="Block signals from strategies whose timeframe is below the minute floor below."><span>Min timeframe</span><label class="switch"><input type="checkbox" id="flt-timeframe"><span class="slider"></span></label></label>
         </div>
         <div class="controls" style="margin-top:14px">
           <div class="ctrl"><label>Vol floor (atr/px)</label><input id="flt-volmin" type="number" step="0.0001"></div>
@@ -1222,6 +1225,8 @@ volumes:
           <div class="ctrl"><label>Min volume ratio</label><input id="flt-volr" type="number" step="0.1"></div>
           <div class="ctrl"><label>Max spread (bps)</label><input id="flt-maxspread" type="number" step="0.1"></div>
           <div class="ctrl"><label>ADX trend thresh</label><input id="flt-adx" type="number" step="1"></div>
+          <div class="ctrl"><label>Noise min EMA/ATR</label><input id="flt-noisemin" type="number" step="0.05"></div>
+          <div class="ctrl"><label>Min timeframe (min)</label><input id="flt-mintf" type="number" step="5"></div>
           <button class="btn" id="flt-save">Save Filters</button>
         </div>
         <div class="kv" id="flt-rejects" style="margin-top:10px"></div>
@@ -2358,13 +2363,16 @@ async function loadSettings(){
     // Pre-trade filters: control overrides are partial, so merge them over config
     // rather than hiding static regime policy rules/mode after any UI save.
     const flt={...((d.config||{}).filters||{}),...((d.control||{}).filters||{})};
-    ['trend','volatility','volume','session','spread','regime'].forEach(k=>{ const el=$('flt-'+k); if(el) el.checked=!!flt[k]; });
+    ['trend','volatility','volume','session','spread','regime','noise','timeframe'].forEach(k=>{ const el=$('flt-'+k); if(el) el.checked=!!flt[k]; });
     $('flt-regime-enforce').checked = flt.regime_mode === 'enforce';
+    $('flt-noise-enforce').checked = flt.noise_mode === 'enforce';
     $('flt-volmin').value = flt.vol_min ?? '';
     $('flt-volmax').value = flt.vol_max ?? '';
     $('flt-volr').value = flt.min_volume_ratio ?? '';
     $('flt-maxspread').value = flt.max_spread_bps ?? '';
     $('flt-adx').value = flt.adx_trend ?? '';
+    $('flt-noisemin').value = flt.noise_min_ema_atr ?? '';
+    $('flt-mintf').value = flt.min_timeframe_minutes ?? '';
     const rj=((STATUS.filters||{}).rejects)||{};
     // Keep consensus veto/block counters visible even at zero; otherwise a
     // missing event and a missing telemetry contract look identical.
@@ -2423,13 +2431,15 @@ async function saveRisk(){
 }
 async function saveFilters(){
   const body={};
-  ['trend','volatility','volume','session','spread','regime'].forEach(k=>{ body[k]=$('flt-'+k).checked; });
-  // Default to shadow when enforcement is off: keep collecting hypothetical
-  // veto evidence, and require this explicit switch before blocking entries.
+  ['trend','volatility','volume','session','spread','regime','noise','timeframe'].forEach(k=>{ body[k]=$('flt-'+k).checked; });
+  // Default to shadow/observe when enforcement is off: keep collecting
+  // hypothetical veto evidence, and require the explicit switch before blocking.
   body.regime_mode = $('flt-regime-enforce').checked ? "enforce" : "shadow";
+  body.noise_mode = $('flt-noise-enforce').checked ? "enforce" : "observe";
   const n=(id,key)=>{ const v=parseFloat($(id).value); if(!isNaN(v)) body[key]=v; };
   n('flt-volmin','vol_min'); n('flt-volmax','vol_max'); n('flt-volr','min_volume_ratio');
   n('flt-maxspread','max_spread_bps'); n('flt-adx','adx_trend');
+  n('flt-noisemin','noise_min_ema_atr'); n('flt-mintf','min_timeframe_minutes');
   try{ await api('/api/filters',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); $('flt-save').textContent='Saved ✓'; await loadSettings(); setTimeout(()=>$('flt-save').textContent='Save Filters',1500); }catch(e){ $('flt-save').textContent='Failed'; }
 }
 async function saveLearning(){

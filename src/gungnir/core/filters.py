@@ -86,6 +86,12 @@ class FilterConfig:
     noise: bool = False
     noise_mode: str = "observe"          # observe | enforce
     noise_min_ema_atr: float = 0.4
+    # Minimum-timeframe gate: block signals from strategies whose timeframe is
+    # below ``min_timeframe_minutes`` (sub-hourly strategies were structurally
+    # negative in every runtime window). Off by default — the least out-of-
+    # sample-validated of the pre-trade filters, so it must be opted into.
+    timeframe: bool = False
+    min_timeframe_minutes: float = 0.0
 
     @classmethod
     def from_dict(cls, d: dict | None) -> "FilterConfig":
@@ -131,6 +137,17 @@ def evaluate_regime(strategy: str, features, cfg: FilterConfig, regime: str | No
     return RegimeDecision(mode, cfg.regime_policy_version, current, family, False)
 
 
+def evaluate_timeframe(tf_minutes: float | None, cfg: FilterConfig) -> bool:
+    """Would the minimum-timeframe gate block this strategy's signal?
+
+    True when the gate is on and the strategy's timeframe is below
+    ``min_timeframe_minutes``. ``tf_minutes`` unknown ⇒ never blocks.
+    """
+    if not cfg.timeframe or cfg.min_timeframe_minutes <= 0 or tf_minutes is None:
+        return False
+    return tf_minutes < cfg.min_timeframe_minutes
+
+
 def evaluate_noise(features, cfg: FilterConfig) -> tuple[bool, float | None]:
     """No-trend-structure reading for one decision.
 
@@ -167,7 +184,7 @@ def _spread_bps(features) -> float | None:
     return ob.spread / last * 10_000.0
 
 
-def apply(signal, features, strategy: str, cfg: FilterConfig, symbol: str, now: datetime | None = None, regime: str | None = None) -> tuple[bool, str | None]:
+def apply(signal, features, strategy: str, cfg: FilterConfig, symbol: str, now: datetime | None = None, regime: str | None = None, tf_minutes: float | None = None) -> tuple[bool, str | None]:
     """Only a matching policy in explicit enforce mode can veto by regime."""
     if signal.side == Side.FLAT:
         return True, None
@@ -204,4 +221,6 @@ def apply(signal, features, strategy: str, cfg: FilterConfig, symbol: str, now: 
         would, _ = evaluate_noise(features, cfg)
         if would:
             return False, "noise"
+    if evaluate_timeframe(tf_minutes, cfg):
+        return False, "timeframe"
     return True, None

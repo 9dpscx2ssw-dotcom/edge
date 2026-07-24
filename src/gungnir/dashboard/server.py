@@ -1025,15 +1025,19 @@ def create_app() -> FastAPI:
                              "risk_settings": candidate["risk_settings"],
                              "effective": effective})
 
-    _FILTER_BOOLS = ("trend", "volatility", "volume", "session", "spread", "regime")
+    _FILTER_BOOLS = ("trend", "volatility", "volume", "session", "spread", "regime",
+                     "noise", "timeframe")
     _FILTER_NUMS = {
         "vol_min": lambda v: float(v) >= 0,
         "vol_max": lambda v: float(v) > 0,
         "min_volume_ratio": lambda v: float(v) >= 0,
         "max_spread_bps": lambda v: float(v) >= 0,
         "adx_trend": lambda v: float(v) >= 0,
+        "noise_min_ema_atr": lambda v: float(v) >= 0,
+        "min_timeframe_minutes": lambda v: float(v) >= 0,
     }
-    _FILTER_MODES = {"regime_mode": {"observe", "shadow", "enforce"}}
+    _FILTER_MODES = {"regime_mode": {"observe", "shadow", "enforce"},
+                     "noise_mode": {"observe", "enforce"}}
 
     _LEARNING_FIELDS = {
         "reflection_mode": lambda v: v in ("llm", "bayesian"),

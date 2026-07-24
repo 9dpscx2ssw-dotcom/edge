@@ -437,16 +437,23 @@ filters:
   min_volume_ratio: 0.5
   max_spread_bps: 15.0
   adx_trend: 25.0
-  # No-trend-structure filter (2026-07-24). Blocks entries where the fast/slow
-  # EMA spread is below noise_min_ema_atr ATRs (chop, no established trend).
-  # Ships OBSERVE — tags every trade (noise_would_block / noise_ext_atr in
-  # context) and counts would-blocks, but blocks nothing. The 21-24 Jul review
-  # found this signal directionally real but statistically weak (z≈-0.5, holds
-  # 2/3 OOS splits) — collect live shadow evidence here, then promote to
-  # noise_mode: enforce only if it validates out-of-sample.
+  # No-trend-structure filter. Blocks entries where the fast/slow EMA spread is
+  # below noise_min_ema_atr ATRs (chop, no established trend). Toggle + mode +
+  # threshold are live in the dashboard Settings tab.
+  # ENFORCE as of 2026-07-24: on the 485-trade window the would-block bucket
+  # (n=32) was 0% win rate, -68 — P(by chance)=0.00001. Validated; now vetoes.
   noise: true
-  noise_mode: observe        # observe (tag only) | enforce (veto)
+  noise_mode: enforce        # observe (tag only) | enforce (veto)
   noise_min_ema_atr: 0.4
+  # Minimum-timeframe gate: block signals from strategies whose timeframe is
+  # below min_timeframe_minutes. Toggle in the dashboard Settings tab. Sub-hourly
+  # strategies were structurally negative every window (1m/5m/15m all lost;
+  # 60m+ won), and dropping <=5min lifted the gated book to +179 / 43% win. But
+  # that cut is the least out-of-sample-validated fix, so it ships OFF with the
+  # floor pre-set to 10 (blocks 1m/5m, keeps 15m+) — flip it on from Settings
+  # once another window confirms.
+  timeframe: false
+  min_timeframe_minutes: 10
 
 # Offline RL (advisory; see learning/rl). offline_advisory loads + shadow-tracks
 # a trained policy; offline_gate (veto-only) lets it block signals it disagrees

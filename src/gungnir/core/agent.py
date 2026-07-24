@@ -1909,7 +1909,8 @@ class Agent:
                     key = f"regime_shadow:{regime_decision.family}:{regime_decision.regime}"
                     self._filter_observations[key] += 1
                 ok, why = filters.apply(signal, features, strat.name, self._filters, symbol,
-                                        regime=regime)
+                                        regime=regime,
+                                        tf_minutes=self._tf_minutes(getattr(strat, "timeframe", "") or ""))
                 if not ok:
                     self._filter_rejects[why] += 1
                     self.journal.record_signal(signal, f"rejected_{why}", features.last_price)

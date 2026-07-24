@@ -211,3 +211,32 @@ def test_consensus_family_is_ensemble_and_regime_avoid_vetoes():
     assert d.would_veto and d.family == "ensemble"
     # a non-avoided regime for the same family passes
     assert filters.evaluate_regime("consensus", _feat(), cfg, regime="trend_high").would_veto is False
+
+
+# ── Minimum-timeframe gate ────────────────────────────────────────────────────
+
+def test_evaluate_timeframe_blocks_below_floor():
+    cfg = FilterConfig(timeframe=True, min_timeframe_minutes=10)
+    assert filters.evaluate_timeframe(5, cfg) is True      # 5m < 10 → block
+    assert filters.evaluate_timeframe(15, cfg) is False     # 15m ≥ 10 → pass
+    assert filters.evaluate_timeframe(10, cfg) is False     # exactly at floor → pass
+
+
+def test_evaluate_timeframe_inert_when_off_or_unknown():
+    assert filters.evaluate_timeframe(1, FilterConfig()) is False              # gate off
+    assert filters.evaluate_timeframe(1, FilterConfig(timeframe=True)) is False  # floor 0
+    assert filters.evaluate_timeframe(None, FilterConfig(timeframe=True,
+                                      min_timeframe_minutes=10)) is False        # unknown tf
+
+
+def test_timeframe_gate_in_apply_vetoes_sub_floor_strategy():
+    cfg = FilterConfig(timeframe=True, min_timeframe_minutes=60)
+    assert filters.apply(_sig(), _feat(), "x", cfg, "EURUSD", tf_minutes=5) == (False, "timeframe")
+    assert filters.apply(_sig(), _feat(), "x", cfg, "EURUSD", tf_minutes=240)[0] is True
+    # off by default → never blocks even a 1m strategy
+    assert filters.apply(_sig(), _feat(), "x", FilterConfig(), "EURUSD", tf_minutes=1) == (True, None)
+
+
+def test_timeframe_fields_from_dict():
+    fc = FilterConfig.from_dict({"timeframe": True, "min_timeframe_minutes": 30})
+    assert fc.timeframe is True and fc.min_timeframe_minutes == 30.0

@@ -389,6 +389,11 @@ filters:
   noise: false
   noise_mode: observe        # observe (tag only) | enforce (veto)
   noise_min_ema_atr: 0.4
+  # Minimum-timeframe gate: block signals from strategies whose timeframe is
+  # below min_timeframe_minutes (sub-hourly strategies ran structurally
+  # negative in every runtime window). Off by default; toggle in Settings.
+  timeframe: false
+  min_timeframe_minutes: 0.0
   # Strategy-family × market-regime policy. `evaluate_regime` vetoes a signal
   # only when its family matches a rule below AND regime_mode is `enforce`.
   # Ships in `shadow` (observe-only: counts would-be vetoes, blocks nothing) so
