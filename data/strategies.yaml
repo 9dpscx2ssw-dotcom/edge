@@ -102,8 +102,8 @@ strategies:
   params:
     conviction_base: 0.55
 - name: ema78_crossover_m15
-  mode: shadow
-  enabled: true
+  mode: 'off'
+  enabled: false
   symbols: []
   excluded_symbols: []
   timeframe: 15m
@@ -198,8 +198,8 @@ strategies:
     period_teeth: 8
     period_lips: 5
 - name: hma_dc_m1
-  mode: shadow
-  enabled: true
+  mode: 'off'
+  enabled: false
   symbols: []
   excluded_symbols: []
   timeframe: 1m
@@ -207,8 +207,8 @@ strategies:
     period_hma: 55
     period_donchian: 20
 - name: hma_dc_m5
-  mode: shadow
-  enabled: true
+  mode: 'off'
+  enabled: false
   symbols: []
   excluded_symbols: []
   timeframe: 5m
@@ -243,8 +243,8 @@ strategies:
     period_hma: 55
     period_donchian: 20
 - name: fvg_m1
-  mode: shadow
-  enabled: true
+  mode: 'off'
+  enabled: false
   symbols: []
   excluded_symbols: []
   timeframe: 1m
@@ -252,8 +252,8 @@ strategies:
     lookback: 50
     min_body_ratio: 0.5
 - name: fvg_m5
-  mode: shadow
-  enabled: true
+  mode: 'off'
+  enabled: false
   symbols: []
   excluded_symbols: []
   timeframe: 5m
@@ -270,16 +270,16 @@ strategies:
     lookback: 50
     min_body_ratio: 0.5
 - name: scalp_ema_vwap_m1
-  mode: shadow
-  enabled: true
+  mode: 'off'
+  enabled: false
   symbols: []
   excluded_symbols: []
   timeframe: 1m
   params:
     period_ema: 9
 - name: scalp_ema_vwap_m5
-  mode: shadow
-  enabled: true
+  mode: 'off'
+  enabled: false
   symbols: []
   excluded_symbols: []
   timeframe: 5m
