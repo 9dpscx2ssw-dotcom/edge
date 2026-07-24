@@ -1360,11 +1360,28 @@ class Agent:
         )
         if hard_conflict:
             d.action = "veto"
+        # CF1: the family×regime policy gates the CONSENSUS decision itself, not
+        # only the per-strategy stances. evaluate_regime is otherwise wired only
+        # into the per-strategy loop, so a `family: ensemble … action: avoid`
+        # rule was dead config for the consensus book. Vetoes NEW entries only
+        # (faithful to the per-strategy "avoid" = veto-signal semantic); open
+        # positions still exit on their own rules. Terminal state stays the
+        # standard rejected_consensus — the regime cause rides in analytical_reason.
+        regime_block = False
+        if d.action == "enter" and self._filters.regime:
+            rd = filters.evaluate_regime("consensus", features, self._filters, regime=regime)
+            if rd.would_veto and rd.mode == "enforce":
+                regime_block = True
+            elif rd.would_veto and rd.mode == "shadow":
+                self._filter_observations[f"regime_shadow:consensus:{rd.regime}"] += 1
+        if regime_block:
+            d.action = "veto"
         decision_ts = operator_now().isoformat()
         if d.action == "none":
             analytical_reason = "empty_stances" if d.n_stances == 0 else "below_entry"
         elif d.action == "veto":
-            analytical_reason = "conflict_gate" if hard_conflict else "opposition_veto"
+            analytical_reason = ("regime_veto" if regime_block else
+                                 "conflict_gate" if hard_conflict else "opposition_veto")
         elif d.action == "hold":
             analytical_reason = "hysteresis_hold"
         elif d.action == "exit":
@@ -1437,9 +1454,11 @@ class Agent:
                                 f"{d.n_stances} stances, opposing "
                                 f"{d.opposing:.0%}"))
         if d.action == "veto":
-            # Conflicted book — stand aside, but journal it so the Signals tab
-            # shows why nothing traded.
-            self._filter_rejects["consensus_conflict"] += 1
+            # Conflicted book (opposition/short-lane) OR a regime-avoid rule on
+            # the consensus family — stand aside, but journal it so the Signals
+            # tab shows why nothing traded. The reject tally distinguishes the
+            # two; the lifecycle terminal state is the same rejected_consensus.
+            self._filter_rejects["consensus_regime" if regime_block else "consensus_conflict"] += 1
             self.journal.record_signal(sig, "rejected_consensus", features.last_price,
                                        decision_id=decision_id)
             self.journal.update_consensus_lifecycle(decision_id, terminal_state="rejected_consensus")
@@ -1756,6 +1775,25 @@ class Agent:
             return
 
         ctx = _summarize(primary_features)
+        # No-trend-structure (noise) filter — observe-only until noise_mode ==
+        # 'enforce'. Tag every trade on this symbol with the EMA-spread-in-ATR
+        # reading and whether it WOULD block, so the signal can be validated
+        # against realized PnL before it gates anything. Stamped on both ctx
+        # (opposite-side / consensus closes) and the live view (stop/TP closes
+        # read context from _last_view), plus an aggregate observe counter.
+        if self._filters.noise:
+            n_block, n_ext = filters.evaluate_noise(primary_features, self._filters)
+            ctx["noise_ext_atr"] = n_ext
+            ctx["noise_would_block"] = n_block
+            ctx["noise_mode"] = self._filters.noise_mode
+            _nv = self._last_view.get(symbol)
+            if _nv is not None:
+                _nv["noise_ext_atr"] = n_ext
+                _nv["noise_would_block"] = n_block
+                _nv["noise"] = {"ext_atr": n_ext, "would_block": n_block,
+                                "mode": self._filters.noise_mode}
+            if n_block and self._filters.noise_mode != "enforce":
+                self._filter_observations[f"noise_observe:{regime}"] += 1
         instrument_min = await self._instrument_min(symbol)   # broker min deal size
 
         # Best-signal gate: when several strategies fire on this symbol this bar,

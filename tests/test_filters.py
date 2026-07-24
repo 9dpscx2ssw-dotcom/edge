@@ -150,3 +150,64 @@ def test_regime_enforcement_requires_explicit_mode_and_exact_rule():
 
     assert filters.apply(_sig(), trend, "bb_rsi", observe, "EURUSD", regime="trend_high") == (True, None)
     assert filters.apply(_sig(), trend, "bb_rsi", enforce, "EURUSD", regime="trend_high") == (False, "regime")
+
+
+# ── No-trend-structure (noise) filter ─────────────────────────────────────────
+
+def test_evaluate_noise_flags_flat_ema_as_would_block():
+    # spread |101-99| = 2.0 over atr 1.0 = 2.0 ATRs → well above 0.4, no block.
+    cfg = FilterConfig(noise=True, noise_min_ema_atr=0.4)
+    would, ext = filters.evaluate_noise(_feat(ema_fast=101.0, ema_slow=99.0, atr=1.0), cfg)
+    assert would is False and ext == 2.0
+    # spread 0.2 over atr 1.0 = 0.2 ATRs → below 0.4, would block (chop).
+    would, ext = filters.evaluate_noise(_feat(ema_fast=100.1, ema_slow=99.9, atr=1.0), cfg)
+    assert would is True and ext == 0.2
+
+
+def test_evaluate_noise_thin_features_never_block():
+    cfg = FilterConfig(noise=True)
+    assert filters.evaluate_noise(_feat(atr=0.0), cfg) == (False, None)
+
+
+def test_noise_observe_mode_tags_but_does_not_block():
+    # Chop entry (0.2 ATR spread) that WOULD block, but observe mode never vetoes.
+    cfg = FilterConfig(noise=True, noise_mode="observe", noise_min_ema_atr=0.4)
+    feat = _feat(ema_fast=100.1, ema_slow=99.9, atr=1.0)
+    assert filters.evaluate_noise(feat, cfg)[0] is True          # would block
+    assert filters.apply(_sig(), feat, "x", cfg, "EURUSD") == (True, None)  # but doesn't
+
+
+def test_noise_enforce_mode_blocks_chop_entry():
+    cfg = FilterConfig(noise=True, noise_mode="enforce", noise_min_ema_atr=0.4)
+    chop = _feat(ema_fast=100.1, ema_slow=99.9, atr=1.0)     # 0.2 ATR spread
+    trend = _feat(ema_fast=101.0, ema_slow=99.0, atr=1.0)    # 2.0 ATR spread
+    assert filters.apply(_sig(), chop, "x", cfg, "EURUSD") == (False, "noise")
+    assert filters.apply(_sig(), trend, "x", cfg, "EURUSD")[0] is True
+
+
+def test_noise_off_by_default_is_inert():
+    would, _ = filters.evaluate_noise(_feat(ema_fast=100.1, ema_slow=99.9, atr=1.0),
+                                      FilterConfig())  # noise defaults off
+    assert would is True  # signal still computes...
+    assert filters.apply(_sig(), _feat(ema_fast=100.1, ema_slow=99.9, atr=1.0),
+                         "x", FilterConfig(), "EURUSD") == (True, None)  # ...but off ⇒ no veto
+
+
+def test_noise_mode_from_dict_validates():
+    assert FilterConfig.from_dict({"noise_mode": "bogus"}).noise_mode == "observe"
+    assert FilterConfig.from_dict({"noise": True, "noise_mode": "enforce",
+                                   "noise_min_ema_atr": 0.6}).noise_min_ema_atr == 0.6
+
+
+def test_consensus_family_is_ensemble_and_regime_avoid_vetoes():
+    # CF1 relies on evaluate_regime("consensus", ...) resolving to the ensemble
+    # family so a `family: ensemble ... avoid` rule actually gates the consensus
+    # book. (The wiring into _consensus_step is verified separately.)
+    assert filters.strategy_family("consensus") == "ensemble"
+    cfg = FilterConfig(regime=True, regime_mode="enforce", regime_rules=[
+        {"family": "ensemble", "regime": "range_high", "action": "avoid"},
+    ])
+    d = filters.evaluate_regime("consensus", _feat(), cfg, regime="range_high")
+    assert d.would_veto and d.family == "ensemble"
+    # a non-avoided regime for the same family passes
+    assert filters.evaluate_regime("consensus", _feat(), cfg, regime="trend_high").would_veto is False

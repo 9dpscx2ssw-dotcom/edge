@@ -428,6 +428,16 @@ filters:
   min_volume_ratio: 0.5
   max_spread_bps: 15.0
   adx_trend: 25.0
+  # No-trend-structure filter (2026-07-24). Blocks entries where the fast/slow
+  # EMA spread is below noise_min_ema_atr ATRs (chop, no established trend).
+  # Ships OBSERVE — tags every trade (noise_would_block / noise_ext_atr in
+  # context) and counts would-blocks, but blocks nothing. The 21-24 Jul review
+  # found this signal directionally real but statistically weak (z≈-0.5, holds
+  # 2/3 OOS splits) — collect live shadow evidence here, then promote to
+  # noise_mode: enforce only if it validates out-of-sample.
+  noise: true
+  noise_mode: observe        # observe (tag only) | enforce (veto)
+  noise_min_ema_atr: 0.4
 
 # Offline RL (advisory; see learning/rl). offline_advisory loads + shadow-tracks
 # a trained policy; offline_gate (veto-only) lets it block signals it disagrees

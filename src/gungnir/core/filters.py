@@ -21,6 +21,7 @@ STRATEGY_FAMILIES = {
     "hma_dc_m1": "hybrid", "hma_dc_m5": "hybrid", "hma_dc_m15": "hybrid", "hma_dc_h1": "hybrid", "hma_dc_h4": "hybrid", "hma_dc_d1": "hybrid", "consensus": "ensemble",
 }
 _REGIME_MODES = {"observe", "shadow", "enforce"}
+_NOISE_MODES = {"observe", "enforce"}
 
 
 def category(symbol: str) -> str:
@@ -78,6 +79,13 @@ class FilterConfig:
     regime_mode: str = "observe"
     regime_policy_version: str = "shadow-regime-v1"
     regime_rules: list[dict[str, str]] = field(default_factory=list)
+    # No-trend-structure filter: block entries where the fast/slow EMA spread is
+    # below ``noise_min_ema_atr`` ATRs (chop, no established trend). Ships in
+    # ``observe`` (tags every decision but blocks nothing) so the signal can be
+    # validated against realized PnL before it ever gates a trade.
+    noise: bool = False
+    noise_mode: str = "observe"          # observe | enforce
+    noise_min_ema_atr: float = 0.4
 
     @classmethod
     def from_dict(cls, d: dict | None) -> "FilterConfig":
@@ -89,12 +97,14 @@ class FilterConfig:
             if k == "regime_rules":
                 value = d[k] if isinstance(d[k], list) else []
                 f.regime_rules = [{str(key): str(val) for key, val in rule.items()} for rule in value if isinstance(rule, dict)]
-            elif k in {"regime_mode", "regime_policy_version"}:
+            elif k in {"regime_mode", "regime_policy_version", "noise_mode"}:
                 setattr(f, k, str(d[k]))
             else:
                 setattr(f, k, type(getattr(f, k))(d[k]))
         if f.regime_mode not in _REGIME_MODES:
             f.regime_mode = "observe"
+        if f.noise_mode not in _NOISE_MODES:
+            f.noise_mode = "observe"
         return f
 
 
@@ -119,6 +129,24 @@ def evaluate_regime(strategy: str, features, cfg: FilterConfig, regime: str | No
         if rule.get("family") == family and rule.get("regime") == current and rule.get("action") == "avoid":
             return RegimeDecision(mode, cfg.regime_policy_version, current, family, True, "family_regime_avoid")
     return RegimeDecision(mode, cfg.regime_policy_version, current, family, False)
+
+
+def evaluate_noise(features, cfg: FilterConfig) -> tuple[bool, float | None]:
+    """No-trend-structure reading for one decision.
+
+    Returns ``(would_block, ema_spread_in_atr)``. ``would_block`` is True when
+    the fast/slow EMA spread is below ``noise_min_ema_atr`` ATRs — a chop entry
+    with no established trend. Pure and side-effect-free; the caller decides
+    whether to act (``enforce``) or merely tag it (``observe``). ATR/EMA missing
+    ⇒ ``(False, None)`` so a thin feature set never blocks.
+    """
+    ef = getattr(features, "ema_fast", None)
+    es = getattr(features, "ema_slow", None)
+    atr = getattr(features, "atr", None)
+    if ef is None or es is None or not atr or atr <= 0:
+        return False, None
+    ext = abs(float(ef) - float(es)) / float(atr)
+    return ext < cfg.noise_min_ema_atr, round(ext, 4)
 
 
 def market_regime_filter(signal, sentiment) -> tuple[bool, str | None]:
@@ -172,4 +200,8 @@ def apply(signal, features, strategy: str, cfg: FilterConfig, symbol: str, now: 
         decision = evaluate_regime(strategy, features, cfg, regime)
         if decision.would_veto and decision.mode == "enforce":
             return False, "regime"
+    if cfg.noise and cfg.noise_mode == "enforce":
+        would, _ = evaluate_noise(features, cfg)
+        if would:
+            return False, "noise"
     return True, None

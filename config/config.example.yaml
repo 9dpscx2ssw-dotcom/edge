@@ -373,6 +373,14 @@ filters:
   min_volume_ratio: 0.5
   max_spread_bps: 15.0
   adx_trend: 25.0
+  # No-trend-structure filter: blocks entries where the fast/slow EMA spread is
+  # below noise_min_ema_atr ATRs (chop, no established trend). Ships OBSERVE —
+  # tags every trade (noise_would_block / noise_ext_atr in context) and counts
+  # would-blocks, but blocks nothing. Promote to noise_mode: enforce only after
+  # the tagged data validates the signal out-of-sample.
+  noise: false
+  noise_mode: observe        # observe (tag only) | enforce (veto)
+  noise_min_ema_atr: 0.4
   # Strategy-family × market-regime policy. `evaluate_regime` vetoes a signal
   # only when its family matches a rule below AND regime_mode is `enforce`.
   # Ships in `shadow` (observe-only: counts would-be vetoes, blocks nothing) so
