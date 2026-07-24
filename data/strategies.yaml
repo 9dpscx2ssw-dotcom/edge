@@ -198,8 +198,8 @@ strategies:
     period_teeth: 8
     period_lips: 5
 - name: hma_dc_m1
-  mode: 'off'
-  enabled: false
+  mode: shadow
+  enabled: true
   symbols: []
   excluded_symbols: []
   timeframe: 1m
@@ -207,8 +207,8 @@ strategies:
     period_hma: 55
     period_donchian: 20
 - name: hma_dc_m5
-  mode: 'off'
-  enabled: false
+  mode: shadow
+  enabled: true
   symbols: []
   excluded_symbols: []
   timeframe: 5m
@@ -243,8 +243,8 @@ strategies:
     period_hma: 55
     period_donchian: 20
 - name: fvg_m1
-  mode: 'off'
-  enabled: false
+  mode: shadow
+  enabled: true
   symbols: []
   excluded_symbols: []
   timeframe: 1m
