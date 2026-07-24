@@ -63,6 +63,7 @@ class _SymbolState:
     ema: float = 0.0
     short_ema: float = 0.0      # independent scalp lane (1M–15M)
     bars_held: int = 0          # decide() passes since the last consensus entry
+    cooldown: int = 0           # decide() passes to block re-entry after an exit
     # strategy -> (side, effective weight, family, horizon)
     stances: dict[str, tuple[Side, float, str, str]] = field(default_factory=dict)
 
@@ -74,11 +75,21 @@ class SignalAggregator:
                  enter_threshold: float = 0.25, exit_threshold: float = 0.10,
                  min_hold_bars: int = 2, family_cap: float = 0.4,
                  veto_exit_opposing: float = 1.0,
+                 short_lane_enabled: bool = True,
+                 reentry_cooldown_bars: int = 0,
                  horizon_weights: dict[str, float] | None = None) -> None:
         self.veto_opposing = veto_opposing
         # Force-exit an open position when opposition reaches this higher band.
         # >=1.0 disables it (entry-veto only) — the default, preserving behaviour.
         self.veto_exit_opposing = veto_exit_opposing
+        # Independent scalp lane (1M–15M horizons). It was the dominant consensus
+        # leak (24 Jul): entered split books the main opposition veto should have
+        # blocked (10% win rate, churned the account). Disable to trade the main
+        # lane only; when enabled it now also respects the full-book veto below.
+        self.short_lane_enabled = short_lane_enabled
+        # After any consensus exit, block re-entry on that symbol this many
+        # decide() passes — a cost-bleed guard against exit→reopen churn. 0 off.
+        self.reentry_cooldown_bars = max(0, reentry_cooldown_bars)
         self.ema_alpha = ema_alpha
         self.enter_threshold = enter_threshold
         # Exit band must sit below the entry band or hysteresis degenerates
@@ -228,11 +239,23 @@ class SignalAggregator:
 
         if position_side is None:
             st.bars_held = 0
-            short_qualifies = (short_side is not None and len(short_stances) > 0
+            # Re-entry cooldown: after an exit, stand aside for N passes so an
+            # exit doesn't immediately reopen into cost-bleed churn.
+            if st.cooldown > 0:
+                st.cooldown -= 1
+                return AggDecision(action="none", **base)
+            # Scalp lane may only ADD entries the main lane misses, never
+            # override the opposition veto. Requiring opp < veto_opposing here
+            # (and dropping the old `or opp >= veto_opposing` trigger) closes the
+            # 24 Jul leak where a 50/50 split book was routed to the scalp lane
+            # and churned. It also stays gated behind short_lane_enabled.
+            short_qualifies = (self.short_lane_enabled
+                               and short_side is not None and len(short_stances) > 0
                                and abs(short_ema) >= self.enter_threshold
-                               and short_opp < self.veto_opposing)
+                               and short_opp < self.veto_opposing
+                               and opp < self.veto_opposing)
             if short_qualifies and (side is None or abs(ema) < self.enter_threshold
-                                    or opp >= self.veto_opposing or short_side != side):
+                                    or short_side != side):
                 return AggDecision(action="enter", side=short_side,
                                    strength=min(1.0, abs(short_ema)), **base)
             if side is None or abs(ema) < self.enter_threshold:
@@ -248,16 +271,19 @@ class SignalAggregator:
         st.bars_held += 1
         # Conflict exit: a genuinely split book (opposition past the higher exit
         # band) shouldn't ride an open position. Overrides min_hold_bars because
-        # re-entry is itself veto-gated while the split persists, so it can't
-        # re-open into churn. Disabled when veto_exit_opposing >= 1.0.
+        # re-entry is now genuinely veto-gated (scalp lane respects the full-book
+        # veto + the cooldown below), so it can't re-open into churn. Disabled
+        # when veto_exit_opposing >= 1.0.
         if self.veto_exit_opposing < 1.0 and opp >= self.veto_exit_opposing:
             st.bars_held = 0
+            st.cooldown = self.reentry_cooldown_bars
             return AggDecision(action="exit", side=position_side,
                                strength=abs(ema), **base)
         flipped = side is not None and side != position_side
         drained = abs(ema) < self.exit_threshold
         if (flipped or drained) and st.bars_held > self.min_hold_bars:
             st.bars_held = 0
+            st.cooldown = self.reentry_cooldown_bars
             return AggDecision(action="exit", side=position_side,
                                strength=abs(ema), **base)
         return AggDecision(action="hold", side=position_side,

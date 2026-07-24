@@ -313,6 +313,14 @@ aggregation:
   enter_threshold: 0.35      # |consensus| needed to open (was 0.25)
   exit_threshold: 0.15       # |consensus| floor to stay in, must be < enter (was 0.10)
   min_hold_bars: 4           # consensus exits blocked this many bars after entry (was 2)
+  # Independent scalp lane (1M-15M horizons). When enabled it now respects the
+  # full-book opposition veto (a 24 Jul fix — it previously overrode the veto
+  # and churned split books). Set false to trade the main vote only; on the
+  # Oracle book the scalp lane was a net loser, so the live config disables it.
+  short_lane_enabled: true
+  # After any consensus exit, block re-entry on that symbol for this many
+  # decide() passes — a cost-bleed guard against exit→reopen churn. 0 = off.
+  reentry_cooldown_bars: 3
 
 # Pre-trade compliance: hard rules applied to LIVE orders only.
 compliance:

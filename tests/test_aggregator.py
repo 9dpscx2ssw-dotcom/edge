@@ -146,10 +146,13 @@ def test_horizon_weighting_is_exposed_in_diagnostics():
 
 
 def test_short_lane_can_enter_against_long_horizon_context():
+    # Scalp lane overrides the main direction only when the full book is NOT
+    # split (opp < veto): main clearly SELL, fast lane strongly BUY → enter BUY.
     a = _agg(family_cap=0.0)
-    a.set_stance("US100", "scalp", Side.BUY, 1.0, horizon="5M")
-    a.set_stance("US100", "trend", Side.SELL, 1.0, horizon="1H")
+    a.set_stance("US100", "trend", Side.SELL, 5.0, horizon="1H")   # main SELL, dominant
+    a.set_stance("US100", "scalp", Side.BUY, 2.0, horizon="5M")    # fast BUY
     d = _converge(a, "US100")
+    assert d.opposing < 0.35                       # not a split book
     assert d.action == "enter" and d.side == Side.BUY
     lane = d.diagnostics["short_lane"]
     assert lane["n_stances"] == 1 and lane["ema_score"] > 0.25
@@ -184,3 +187,60 @@ def test_conflict_exit_disabled_by_default_holds_the_split():
     d = _converge(a, "US100", pos=Side.BUY)
     assert d.opposing >= 0.45
     assert d.action == "hold" and d.side == Side.BUY
+
+
+# ── Scalp-lane veto + disable flag + re-entry cooldown (24 Jul leak fixes) ─────
+
+def test_scalp_lane_cannot_override_opposition_veto_on_split_book():
+    # Main book 50/50 split (opp ≥ veto) with a clean, strong scalp (M5) lane.
+    # Pre-fix the scalp lane entered anyway (the leak); now a split book blocks
+    # every lane → stand aside.
+    a = _agg()  # short_lane_enabled defaults True
+    a.set_stance("US100", "b1", Side.BUY, 3.0, family="A", horizon="5M")
+    a.set_stance("US100", "b2", Side.BUY, 3.0, family="B", horizon="5M")
+    a.set_stance("US100", "s1", Side.SELL, 4.0, family="C", horizon="1H")
+    d = _converge(a, "US100")
+    assert d.opposing >= 0.35                       # split book
+    assert d.diagnostics["short_lane"]["n_stances"] == 2   # scalp lane IS populated…
+    assert abs(d.diagnostics["short_lane"]["ema_score"]) >= 0.35  # …and strongly BUY
+    assert d.action == "none"          # …but a split book blocks every lane
+
+
+def test_scalp_lane_disable_flag_routes_to_main_lane():
+    def _seed(a):
+        # Non-split book (opp < veto): main clearly BUY, fast (M5) lane strongly
+        # SELL. Lane on → scalp overrides to SELL; lane off → main BUY.
+        a.set_stance("US100", "L1", Side.BUY, 5.0, family="A", horizon="1H")
+        a.set_stance("US100", "S1", Side.SELL, 2.0, family="C", horizon="5M")
+    on = _agg(family_cap=0.0, short_lane_enabled=True)
+    off = _agg(family_cap=0.0, short_lane_enabled=False)
+    _seed(on)
+    _seed(off)
+    d_on, d_off = _converge(on, "US100"), _converge(off, "US100")
+    assert d_on.opposing < 0.35
+    assert d_on.action == "enter" and d_on.side == Side.SELL    # scalp overrides
+    assert d_off.action == "enter" and d_off.side == Side.BUY   # main lane only
+
+
+def test_reentry_cooldown_blocks_reopen_after_exit():
+    a = _agg(reentry_cooldown_bars=3, min_hold_bars=0)
+    a.set_stance("US100", "b1", Side.BUY, 5.0, family="A", horizon="1H")
+    assert _converge(a, "US100").action == "enter"             # opens
+    a.clear_stance("US100", "b1")                              # book drains
+    while a.decide("US100", Side.BUY).action != "exit":
+        pass                                                   # drive the exit
+    a.set_stance("US100", "b1", Side.BUY, 5.0, family="A", horizon="1H")  # signal returns
+    blocked = [a.decide("US100", None).action for _ in range(3)]
+    assert blocked == ["none", "none", "none"]                # cooldown holds
+    assert _converge(a, "US100").action == "enter"            # then re-opens
+
+
+def test_cooldown_zero_allows_immediate_reentry():
+    a = _agg(reentry_cooldown_bars=0, min_hold_bars=0)
+    a.set_stance("US100", "b1", Side.BUY, 5.0, family="A", horizon="1H")
+    assert _converge(a, "US100").action == "enter"
+    a.clear_stance("US100", "b1")
+    while a.decide("US100", Side.BUY).action != "exit":
+        pass
+    a.set_stance("US100", "b1", Side.BUY, 5.0, family="A", horizon="1H")
+    assert _converge(a, "US100").action == "enter"            # no cooldown gate

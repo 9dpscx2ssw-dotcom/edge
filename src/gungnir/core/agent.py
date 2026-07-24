@@ -379,6 +379,8 @@ class Agent:
                 exit_threshold=float(agg_cfg.get("exit_threshold", 0.10)),
                 min_hold_bars=int(agg_cfg.get("min_hold_bars", 2)),
                 family_cap=float(agg_cfg.get("family_cap", 0.4)),
+                short_lane_enabled=bool(agg_cfg.get("short_lane_enabled", True)),
+                reentry_cooldown_bars=int(agg_cfg.get("reentry_cooldown_bars", 0)),
                 horizon_weights=agg_cfg.get("horizon_weights", {}),
             )
             log.info("Consensus aggregation ON (veto %.0f%%, family cap %.0f%%)",

@@ -326,6 +326,15 @@ aggregation:
   enter_threshold: 0.35      # |consensus| needed to open (was 0.25)
   exit_threshold: 0.15       # |consensus| floor to stay in, must be < enter (was 0.10)
   min_hold_bars: 4           # consensus exits blocked this many bars after entry (was 2)
+  # Scalp lane (1M-15M horizons) — DISABLED 2026-07-24. It was the dominant
+  # consensus leak: it overrode the opposition veto and entered 50/50 split
+  # books, churning at a 10% win rate (-40 over ~16h). The main lane alone made
+  # +38. With it off, consensus trades the main vote only. (The aggregator now
+  # also makes the scalp lane respect the full-book veto when it IS enabled.)
+  short_lane_enabled: false
+  # After any consensus exit, block re-entry on that symbol for this many
+  # decide() passes — a cost-bleed guard against exit→reopen churn.
+  reentry_cooldown_bars: 3
 
 # Pre-trade compliance: hard rules applied to LIVE orders only.
 compliance:
