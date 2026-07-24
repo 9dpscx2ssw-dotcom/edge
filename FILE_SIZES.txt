@@ -1,0 +1,9 @@
+69447680 ./runtime_data/active-postdelegation.db
+21862400 ./audit_archive/oracle_32_strategy_deep_audit_20260724.tar
+18853888 ./runtime_data/historical-2026-07-23.backup.db
+9046 ./runtime_data/manifests/DATABASE_INVENTORY.json
+1703 ./runtime_data/manifests/ACTIVE_HISTORICAL_MANIFEST.json
+870 ./SHA256SUMS.txt
+557 ./README.md
+520 ./runtime_data/manifests/historical-2026-07-23.manifest.json
+0 ./FILE_SIZES.txt
