@@ -24,12 +24,29 @@ from ..features.feature_store import FeatureSet
 
 
 class PositionSizer(ABC):
+    def __init__(self, config: Config):
+        # Conviction (strategy self-confidence) linearly scales size in every
+        # sizer, but the 24 Jul audit found it ANTI-predictive — the top decile
+        # (0.9-1.0) had the LOWEST win rate (12%), so the worst signals were
+        # getting the largest positions. Blend conviction toward a neutral
+        # constant:  effective = weight·conviction + (1-weight)·neutral.
+        # weight 1.0 = full conviction (legacy); 0.0 = flat sizing at `neutral`
+        # (≈ mean conviction, so gross exposure stays bounded). Re-raise the
+        # weight only once a CALIBRATED conviction→P(win) map exists.
+        self._conv_weight = min(max(float(
+            config.get("risk", "conviction_sizing_weight", default=1.0)), 0.0), 1.0)
+        self._conv_neutral = float(config.get("risk", "conviction_sizing_neutral", default=0.5))
+
+    def _conviction(self, conviction: float) -> float:
+        return self._conv_weight * conviction + (1.0 - self._conv_weight) * self._conv_neutral
+
     @abstractmethod
     def size(self, signal: Signal, features: FeatureSet, equity: float) -> float: ...
 
 
 class FixedFractional(PositionSizer):
     def __init__(self, config: Config):
+        super().__init__(config)
         self.risk_per_trade = config.get("risk", "account_risk_per_trade", default=0.005)
         self.stop_atr_mult = config.get("risk", "stop_atr_mult", default=2.0)
 
@@ -37,7 +54,7 @@ class FixedFractional(PositionSizer):
         stop_distance = self.stop_atr_mult * features.atr
         if stop_distance <= 0:
             return 0.0
-        risk_cash = equity * self.risk_per_trade * signal.conviction
+        risk_cash = equity * self.risk_per_trade * self._conviction(signal.conviction)
         return max(0.0, risk_cash / stop_distance)
 
 
@@ -61,6 +78,7 @@ class VolTarget(PositionSizer):
     """
 
     def __init__(self, config: Config):
+        super().__init__(config)
         self.target_vol = config.get("risk", "vol_target_annual", default=0.10)
 
     @staticmethod
@@ -75,19 +93,20 @@ class VolTarget(PositionSizer):
         if atr <= 0:
             return 0.0
         ann_vol_per_unit = atr * self._bars_per_year(features) ** 0.5
-        target_cash_vol = equity * self.target_vol * signal.conviction
+        target_cash_vol = equity * self.target_vol * self._conviction(signal.conviction)
         return max(0.0, target_cash_vol / ann_vol_per_unit)
 
 
 class FractionalKelly(PositionSizer):
     def __init__(self, config: Config):
+        super().__init__(config)
         self.fraction = config.get("risk", "kelly_fraction", default=0.25)
 
     def size(self, signal: Signal, features: FeatureSet, equity: float) -> float:
         # Expects the strategy/journal to supply win_prob & payoff in context.
-        # Falls back to conviction-as-edge if stats are missing.
+        # Falls back to (blended) conviction-as-edge if stats are missing.
         ctx = getattr(features.prediction, "confidence", None)
-        p = ctx if ctx is not None else signal.conviction
+        p = ctx if ctx is not None else self._conviction(signal.conviction)
         b = 1.0  # assume 1:1 payoff until the evaluator provides a real one
         kelly = max(0.0, (p * (b + 1) - 1) / b)
         return equity * self.fraction * kelly

@@ -185,6 +185,14 @@ risk:
   account_risk_per_trade: 0.01   # 0.5% of equity at risk per trade
   vol_target_annual: 0.10         # 10% annualized portfolio vol target
   max_portfolio_exposure: 15     # gross leverage cap
+  # Conviction→size scaling. The 24 Jul audit found strategy conviction
+  # ANTI-predictive (0.9-1.0 decile = 12% win, lowest of all), so it was
+  # up-sizing the worst trades. FLATTENED to 0.0: size ignores conviction and
+  # uses the neutral constant below (RL P(take), which IS predictive, still
+  # scales size down via rl.confidence_sizing). Raise toward 1.0 only after a
+  # calibrated conviction→P(win) map is built. weight 1.0 = legacy behaviour.
+  conviction_sizing_weight: 0.0
+  conviction_sizing_neutral: 0.5
   max_per_asset_exposure: 3
   max_open_positions: 14
   # Consensus receives comparable capacity only in the independent shadow
@@ -354,6 +362,13 @@ rl:
   enabled: true
   gate_signals: true        # false = learn but never block (pure observation)
   shadow_skipped: true      # paper-fill skipped signals to learn the counterfactual
+  # Behaviour when the gate is judged untrustworthy (collapsed take-rate or
+  # divergence). "open" (legacy) overrides to take EVERYTHING — the 24 Jul audit
+  # found gate-approved trades (rl_p>=0.5) profitable (+74/55% win) while these
+  # fail-open fills held the entire loss (-690/25% win). "safe" respects the
+  # policy's own decision instead; learning continues via shadow_skipped and it
+  # self-corrects (recent_take_rate tracks the policy, not this override).
+  fail_mode: safe           # safe | open
   warmup_trades: 40         # take everything until this many updates have happened
   take_threshold: 0.5       # P(take) at/above which the policy executes a signal
   # Confidence-scaled sizing (post-warmup): P(take) at the threshold trades at

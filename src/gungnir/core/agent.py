@@ -389,6 +389,13 @@ class Agent:
         self.rl: RLPolicy | None = None
         self._rl_gate = bool(rl_cfg.get("gate_signals", True))
         self._rl_shadow_skipped = bool(rl_cfg.get("shadow_skipped", True))
+        # What to do when the gate is judged untrustworthy (collapsed take-rate
+        # or divergence): "open" (legacy) overrides to take EVERYTHING — the
+        # 24 Jul audit found those fills held the entire loss; "safe" respects
+        # the policy's own decision instead (skips stay skipped, learning via
+        # shadow_skipped continues, and it self-corrects since recent_take_rate
+        # tracks the policy's actions, not this override).
+        self._rl_fail_mode = str(rl_cfg.get("fail_mode", "open")).lower()
         # Confidence-scaled sizing: past warmup, P(take) shades position size
         # DOWN toward the floor near the take threshold (never up — vet() caps
         # stay intact). Turns the policy's learned confidence into allocation.
@@ -2046,13 +2053,20 @@ class Agent:
                     # It still learns (decision is stamped/graded); it just
                     # can't block while it is untrustworthy.
                     gate_healthy = _rl_gate_healthy(rate, self._rl_diverged)
-                    take = decision.take if (self._rl_gate and gate_healthy) else True
+                    if not self._rl_gate:
+                        take = True                          # gate off: observe-only
+                    elif gate_healthy:
+                        take = decision.take                 # normal gating
+                    elif self._rl_fail_mode == "safe":
+                        take = decision.take                 # fail-safe: respect the policy
+                    else:
+                        take = True                          # fail-open (legacy): take all
                     # Tag fail-open/override fills so future audits can isolate
                     # the cohort: the 24 Jul audits found gate-approved trades
                     # (rl_p>=take) profitable while fail-open/warmup fills held
                     # the entire loss. Persisted on the opened trade context below.
                     self._rl_fail_open = bool(self._rl_gate and not gate_healthy
-                                              and not decision.take)
+                                              and take and not decision.take)
                     self._rl_gate_healthy = bool(gate_healthy)
                     # Would have skipped, but the unhealthy policy was overridden:
                     # record the bypass on the live path for the audit trail.

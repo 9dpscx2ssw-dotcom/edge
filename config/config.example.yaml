@@ -179,6 +179,12 @@ risk:
   account_risk_per_trade: 0.005   # 0.5% of equity at risk per trade
   vol_target_annual: 0.10         # 10% annualized portfolio vol target
   max_portfolio_exposure: 2.0     # gross leverage cap
+  # Conviction→size blend: effective = weight·conviction + (1-weight)·neutral.
+  # weight 1.0 = full conviction (legacy); 0.0 = flat sizing at neutral. The
+  # 24 Jul audit found conviction anti-predictive, so flattening is recommended
+  # until a calibrated conviction→P(win) map exists.
+  conviction_sizing_weight: 1.0
+  conviction_sizing_neutral: 0.5
   max_per_asset_exposure: 0.5
   max_open_positions: 5
   max_opens_per_symbol_per_bar: 1  # when several strategies fire on the SAME symbol
@@ -338,6 +344,10 @@ compliance:
 rl:
   enabled: true
   gate_signals: true        # false = learn but never block (pure observation)
+  # Gate behaviour when the policy is judged untrustworthy: "open" (legacy)
+  # takes everything; "safe" respects the policy's own decision (recommended —
+  # the audit found take-all fail-open fills held the entire loss).
+  fail_mode: open           # safe | open
   shadow_skipped: true      # paper-fill skipped signals to learn the counterfactual
   warmup_trades: 40         # take everything until this many updates have happened
   take_threshold: 0.5       # P(take) at/above which the policy executes a signal
