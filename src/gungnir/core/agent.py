@@ -2716,15 +2716,33 @@ class Agent:
 
 
 def _summarize(features) -> dict:
-    """Compact, LLM/journal-friendly snapshot of a FeatureSet."""
+    """Compact decision-time snapshot of a FeatureSet for the journal.
+
+    Beyond the market basics, this persists the indicator state the 24 Jul
+    audits needed but could not recover — ADX/DMI trend strength, oscillator
+    values, and the prior-bar EMAs that make a crossover replayable — plus the
+    EMA separation normalized by ATR (the noise/extension signal). All reads are
+    defensive so a thin FeatureSet (base, non-Kraken) still serialises.
+    """
     ob = features.orderbook
+    g = lambda k, d=None: getattr(features, k, d)  # noqa: E731 — defensive attr read
+    atr = features.atr or 0.0
+    ema_fast, ema_slow = features.ema_fast, features.ema_slow
+    def r(v, n=6):
+        return round(float(v), n) if isinstance(v, (int, float)) else None
     return {
-        "price": round(features.last_price, 6),
-        "ema_fast": round(features.ema_fast, 6),
-        "ema_slow": round(features.ema_slow, 6),
-        "rsi": round(features.rsi, 1),
-        "atr": round(features.atr, 6),
-        "ob_imbalance": round(ob.imbalance, 3) if ob else None,
-        "ob_spread": round(ob.spread, 6) if ob else None,
-        "sentiment": round(features.sentiment.score, 2) if features.sentiment else None,
+        "price": r(features.last_price),
+        "ema_fast": r(ema_fast), "ema_slow": r(ema_slow),
+        "ema_gap_atr": r((ema_fast - ema_slow) / atr, 4) if atr else None,
+        "rsi": r(features.rsi, 1), "atr": r(atr),
+        # Trend strength / direction — the single most-requested missing field.
+        "adx": r(g("adx"), 2), "plus_di": r(g("plus_di"), 2), "minus_di": r(g("minus_di"), 2),
+        # Oscillator + prior-bar state for cross/fresh-event replay.
+        "macd_hist": r(g("macd_hist"), 6), "stoch_k": r(g("stoch_k"), 2),
+        "stoch_d": r(g("stoch_d"), 2), "cci14": r(g("cci14"), 2),
+        "prev_ema7": r(g("prev_ema7")), "prev_ema8": r(g("prev_ema8")),
+        "prev_ema9": r(g("prev_ema9")), "prev_ema21": r(g("prev_ema21")),
+        "ob_imbalance": r(ob.imbalance, 3) if ob else None,
+        "ob_spread": r(ob.spread) if ob else None,
+        "sentiment": r(features.sentiment.score, 2) if features.sentiment else None,
     }
