@@ -438,14 +438,51 @@ class CCI200EMAPivotAppStrategy(Strategy):
 
 
 class EMAStochRSIStrategy(Strategy):
-    """S5: EMA(5,10) + Stochastic(14,3,3) + RSI(14) — H1."""
+    """S5: EMA(5,10) + Stochastic(14,3,3) + RSI(14) — H1.
+
+    Faithful to the source app spec ("EMA + Stochastic + RSI"). The EMA5/
+    EMA10 "cross" condition is a level check (`ema5 > ema10`), but since the
+    agent's edge-triggered emission fires only on the bar a side first
+    appears, this is functionally identical to the app's crossover trigger —
+    no separate cross-detection needed. Three legs the previous version
+    dropped are restored here directly (overwritten in place, not split into
+    a separate variant, since this strategy was never faithful to begin
+    with):
+
+      * Entry requires the stochastic %K AND %D lines to be sloping in the
+        trade's direction ("stochastic's lines are directed up/down"), not
+        just clear of the 80/20 zone (`stoch_slope_confirm_enabled`).
+      * Exit closes outright on stochastic exhaustion — %K above
+        `stoch_exit_upper` (70) for longs, below `stoch_exit_lower` (30) for
+        shorts — instead of the generic ATR target
+        (`stoch_exhaustion_exit_enabled`; see Agent._manage_exits).
+      * The stop sits at the previous swing low/high over `swing_lookback`
+        bars, not a fixed ATR distance (`swing_stop_enabled`; see
+        `custom_brackets`).
+    """
 
     name = "ema_stoch_rsi"
     family = "oscillator"
-    DEFAULTS = {"rsi_mid": 50.0, "stoch_upper": 80.0, "stoch_lower": 20.0,
-                "conviction_base": 0.5}
+    DEFAULTS = {
+        "rsi_mid": 50.0, "stoch_upper": 80.0, "stoch_lower": 20.0,
+        "conviction_base": 0.5,
+        "stoch_slope_confirm_enabled": 1.0,
+        "stoch_exit_upper": 70.0, "stoch_exit_lower": 30.0,
+        "stoch_exhaustion_exit_enabled": 1.0,
+        "swing_lookback": 10.0,
+        "swing_stop_enabled": 1.0,
+    }
     BOUNDS = {"rsi_mid": (40.0, 60.0), "stoch_upper": (60.0, 95.0),
-              "stoch_lower": (5.0, 40.0), "conviction_base": (0.3, 0.8)}
+              "stoch_lower": (5.0, 40.0), "conviction_base": (0.3, 0.8),
+              "swing_lookback": (5.0, 30.0)}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._entry_candles: list = []   # stashed by generate() for custom_brackets
+
+    @property
+    def stoch_exhaustion_exit(self) -> bool:
+        return self.p("stoch_exhaustion_exit_enabled") > 0
 
     def generate(self, features: KrakenFeatureSet) -> list[Signal]:
         if not isinstance(features, KrakenFeatureSet):
@@ -454,14 +491,40 @@ class EMAStochRSIStrategy(Strategy):
         base = self.p("conviction_base")
         rsi = features.rsi
         stoch_k = features.stoch_k
+        stoch_d = features.stoch_d
         conviction = base + 0.3 * min(abs(rsi - 50.0) / 50.0, 1.0)
+
+        slope_up = slope_down = True   # inert unless the toggle below is on
+        if self.p("stoch_slope_confirm_enabled") > 0:
+            slope_up = stoch_k > features.prev_stoch_k and stoch_d > features.prev_stoch_d
+            slope_down = stoch_k < features.prev_stoch_k and stoch_d < features.prev_stoch_d
+
         if (features.ema5 > features.ema10 and rsi > rsi_mid
-                and stoch_k < self.p("stoch_upper")):
+                and stoch_k < self.p("stoch_upper") and slope_up):
+            self._entry_candles = features.candles
             return _sig(self, features, Side.BUY, conviction)
         elif (features.ema5 < features.ema10 and rsi < rsi_mid
-                and stoch_k > self.p("stoch_lower")):
+                and stoch_k > self.p("stoch_lower") and slope_down):
+            self._entry_candles = features.candles
             return _sig(self, features, Side.SELL, conviction)
         return []
+
+    def custom_brackets(
+        self, side: Side, entry_price: float, symbol: str
+    ) -> tuple[float | None, float | None] | None:
+        # TP is left to the generic ATR bracket as a backstop — the app's
+        # exit is a level trigger (stoch_exhaustion_exit), not a price
+        # target, so only the stop leg is overridden here.
+        if self.p("swing_stop_enabled") <= 0 or not self._entry_candles:
+            return None
+        lookback = max(1, int(self.p("swing_lookback")))
+        candles = self._entry_candles
+        window = candles[-lookback:] if len(candles) >= lookback else candles
+        if side == Side.BUY:
+            stop = min(c.low for c in window)
+            return (stop, None) if stop < entry_price else None
+        stop = max(c.high for c in window)
+        return (stop, None) if stop > entry_price else None
 
 
 class CCIReversalStrategy(Strategy):

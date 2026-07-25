@@ -56,6 +56,12 @@ class Strategy(ABC):
     # effect — positions close only on stop/take-profit like everything else.
     ema_cross_exit: bool = False
 
+    # Optional strategy-specific exit signal: a strategy that sets this True
+    # has its position closed outright once ITS OWN oscillator-exhaustion
+    # condition is met (thresholds read via the strategy's own params — see
+    # Agent._manage_exits). False ⇒ no effect.
+    stoch_exhaustion_exit: bool = False
+
     def __init__(
         self,
         params: dict | None = None,

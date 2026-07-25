@@ -946,6 +946,25 @@ class Agent:
                         await self._close(broker, symbol, self._last_view.get(symbol, {}),
                                           pos.strategy, reason="ema-cross-exit")
                         continue
+                # Strategy-specific stochastic-exhaustion exit (e.g.
+                # ema_stoch_rsi: "Close long positions when Stochastic rises
+                # above 70. Close short positions when Stochastic falls below
+                # 30."). Opt-in via `stoch_exhaustion_exit`; thresholds are
+                # read from the strategy's own params (`stoch_exit_upper` /
+                # `stoch_exit_lower`), not the entry-side 80/20 zone bounds.
+                if strat_obj is not None and getattr(strat_obj, "stoch_exhaustion_exit", False):
+                    strat_tf = getattr(strat_obj, "timeframe", self.tf)
+                    cached = self._feat_cache.get((symbol, strat_tf))
+                    feats = cached[1] if cached else None
+                    exhausted = feats is not None and (
+                        (pos.side == Side.BUY and feats.stoch_k > strat_obj.p("stoch_exit_upper")) or
+                        (pos.side == Side.SELL and feats.stoch_k < strat_obj.p("stoch_exit_lower")))
+                    if exhausted:
+                        log.debug("Stoch-exhaustion exit for %s/%s: stoch_k=%.1f against %s",
+                                  symbol, pos.strategy, feats.stoch_k, pos.side.value)
+                        await self._close(broker, symbol, self._last_view.get(symbol, {}),
+                                          pos.strategy, reason="stoch-exhaustion-exit")
+                        continue
                 if pos.side == Side.BUY:
                     hit = (stop and price <= stop) or (tp and price >= tp)
                 else:

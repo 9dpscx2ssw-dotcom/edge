@@ -167,6 +167,7 @@ def build_kraken_series(symbol: str, candles: list[Candle]) -> list["KrakenFeatu
             macd_13_26=_at(ml13_a, i), macd_5_7=_at(ml5_a, i),
             sar=_at(sar_a, i), sar_trend=_at(sar_trend_a, i, 1.0),
             stoch_k=_at(k_a, i, 50.0), stoch_d=_at(d_a, i, 50.0),
+            prev_stoch_k=_at(k_a, i - 1, 50.0), prev_stoch_d=_at(d_a, i - 1, 50.0),
             ema5=_at(ema5_a, i, last),
             ema7=_at(ema7_a, i, last), prev_ema7=_at(ema7_a, i - 1, last),
             ema8=_at(ema8_a, i, last), prev_ema8=_at(ema8_a, i - 1, last),
@@ -229,6 +230,8 @@ class KrakenFeatureSet(FeatureSet):
     # Stochastic
     stoch_k: float = 50.0
     stoch_d: float = 50.0
+    prev_stoch_k: float = 50.0   # prior-bar %K, for slope confirmation
+    prev_stoch_d: float = 50.0   # prior-bar %D, for slope confirmation
 
     # Additional MAs
     ema5: float = 0.0
@@ -434,6 +437,8 @@ def build_kraken(
         # Stochastic
         stoch_k=float(k[-1]) if len(k) else 50.0,
         stoch_d=float(d[-1]) if len(d) else 50.0,
+        prev_stoch_k=float(k[-2]) if len(k) > 1 else (float(k[-1]) if len(k) else 50.0),
+        prev_stoch_d=float(d[-2]) if len(d) > 1 else (float(d[-1]) if len(d) else 50.0),
         # EMAs
         ema5=ema5,
         ema7=ema7,
