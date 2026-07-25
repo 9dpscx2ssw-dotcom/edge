@@ -1668,9 +1668,21 @@ async function loadLearning(){
         rlMetric('Last P(take)', (rl.last_p_take??0).toFixed(3), 'policy confidence');
 
       // Progress: warmup + exploration→exploitation, and take/skip action mix.
+      // Two different populations, shown separately so neither hides the other:
+      //  - "recent" = rl.recent_take_rate, a rolling window of the last <=100
+      //    raw decisions — the same figure the rl-collapse alert (core/agent.py)
+      //    fires on, so this card can actually corroborate or contradict it.
+      //  - "lifetime" = rl.action_counts, a monotonically-growing total of
+      //    every GRADED decision since the policy was created/last reset —
+      //    dominated by the warm-up period (which force-takes everything) and
+      //    does not reflect current behavior, so it must never drive the % bar.
       const warm=rl.warmup_remaining??0;
-      const ac=rl.action_counts||{}; const take=ac.take||0, skip=ac.skip||0, tot=take+skip||1;
-      const takePct=Math.round(take/tot*100), skipPct=100-takePct;
+      const ac=rl.action_counts||{}; const take=ac.take||0, skip=ac.skip||0, lifetimeTot=take+skip||1;
+      const lifetimeTakePct=Math.round(take/lifetimeTot*100);
+      const rtr=rl.recent_take_rate;
+      const hasRecent = rtr!=null;
+      const recentTakePct = hasRecent ? Math.round(rtr*100) : null;
+      const recentSkipPct = hasRecent ? 100-recentTakePct : null;
       const epsPct=Math.max(0,Math.min(100,Math.round((1-eps)*100)));
       $('lrn-progress').innerHTML =
         `<div class="metric-block"><div class="section-title">Warmup</div>
@@ -1678,12 +1690,14 @@ async function loadLearning(){
          <div class="metric-block"><div class="section-title">Exploitation (1 − ε)</div>
            <div class="progress"><span style="width:${epsPct}%"></span></div>
            <div class="reward-value" style="margin-top:4px">${epsPct}% exploiting · ${100-epsPct}% exploring</div></div>
-         <div class="metric-block"><div class="section-title">Action mix (${tot} decisions)</div>
-           <div class="actbar">
-             <div style="width:${takePct}%;background:var(--green)"></div>
-             <div style="width:${skipPct}%;background:var(--mut)"></div>
+         <div class="metric-block"><div class="section-title">Action mix — recent (rolling, last ≤100 decisions)</div>
+           ${hasRecent ? `<div class="actbar">
+             <div style="width:${recentTakePct}%;background:var(--green)"></div>
+             <div style="width:${recentSkipPct}%;background:var(--mut)"></div>
            </div>
-           <div class="reward-value" style="margin-top:4px">Take ${takePct}% · Skip ${skipPct}%</div></div>`;
+           <div class="reward-value" style="margin-top:4px">Take ${recentTakePct}% · Skip ${recentSkipPct}%</div>`
+           : `<div class="reward-value" style="margin-top:4px">Not enough recent decisions yet</div>`}
+           <div class="reward-value" style="margin-top:6px;color:var(--mut);font-size:11px">Lifetime (n=${lifetimeTot}, warm-up-skewed): ${lifetimeTakePct}% take · ${100-lifetimeTakePct}% skip</div></div>`;
 
       const rh=rl.reward_history||[];
       if(rh.length>1){ let c=0; const cum_rh=rh.map(r=>c+=r); sparkChart('lrn-reward-chart', cum_rh, cum_rh[cum_rh.length-1]>=0?C.green:C.red); }
