@@ -271,3 +271,9 @@ strategies:
     symbols: []
     params:
       period_ema: 9
+
+  - name: goldmine_xauusd
+    mode: "off"
+    timeframe: 1d
+    symbols: [GOLD]
+    params: {}

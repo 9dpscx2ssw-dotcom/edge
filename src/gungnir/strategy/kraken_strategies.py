@@ -1272,6 +1272,83 @@ class FollowTheTrendD1Strategy(_FollowTheTrendBase):
     name = "follow_the_trend_d1"
 
 
+class GoldmineXAUUSDStrategy(Strategy):
+    """Faithful replica of the source app "Goldmine" strategy: BB(20,2) +
+    Stochastic(5,3,3) for XAUUSD — D1. Gungnir's configured symbol for this
+    instrument is "GOLD" (config.yaml), not "XAUUSD" — same underlying pair,
+    different epic naming; `symbols` is scoped to "GOLD" to match it.
+
+    Entry:
+      Sell: price at/above the upper BB(20,2) band, the current candle is
+            bearish (close < open), and Stochastic(5,3,3) — both %K and %D —
+            is in the overbought zone (>80) AND sloping down.
+      Buy:  mirror — price at/below the lower band, a bullish candle
+            (close > open), Stochastic oversold (<20) and sloping up.
+    Exit (custom_brackets): TP at the BB mid-line AS OF THE ENTRY BAR (not
+    continuously tracked — "the level ... at which the position has been
+    located at the opening moment"); SL at 1/3 of that TP distance from
+    entry, in the opposite direction. Computed from raw price distance, not
+    FX points, so it works for a non-currency instrument like gold.
+    """
+
+    name = "goldmine_xauusd"
+    family = "meanrev"
+    DEFAULTS = {
+        "conviction_base": 0.5,
+        "stoch_overbought": 80.0,
+        "stoch_oversold": 20.0,
+        "stoch_slope_confirm_enabled": 1.0,
+        "fixed_exit_enabled": 1.0,
+    }
+    BOUNDS = {"conviction_base": (0.3, 0.8), "stoch_overbought": (65.0, 90.0),
+              "stoch_oversold": (10.0, 35.0)}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._entry_bb_mid: float | None = None
+
+    def generate(self, features: KrakenFeatureSet) -> list[Signal]:
+        if not isinstance(features, KrakenFeatureSet) or not features.candles:
+            return []
+        candle = features.candles[-1]
+        price = features.last_price
+        base = self.p("conviction_base")
+        overbought, oversold = self.p("stoch_overbought"), self.p("stoch_oversold")
+
+        slope_down = slope_up = True
+        if self.p("stoch_slope_confirm_enabled") > 0:
+            slope_down = (features.stoch5_k < features.prev_stoch5_k
+                         and features.stoch5_d < features.prev_stoch5_d)
+            slope_up = (features.stoch5_k > features.prev_stoch5_k
+                       and features.stoch5_d > features.prev_stoch5_d)
+
+        if (price >= features.bb_upper and candle.close < candle.open
+                and features.stoch5_k > overbought and features.stoch5_d > overbought
+                and slope_down):
+            self._entry_bb_mid = features.bb_mid
+            return _sig(self, features, Side.SELL, base)
+        elif (price <= features.bb_lower and candle.close > candle.open
+                and features.stoch5_k < oversold and features.stoch5_d < oversold
+                and slope_up):
+            self._entry_bb_mid = features.bb_mid
+            return _sig(self, features, Side.BUY, base)
+        return []
+
+    def custom_brackets(
+        self, side: Side, entry_price: float, symbol: str
+    ) -> tuple[float | None, float | None] | None:
+        if self.p("fixed_exit_enabled") <= 0 or self._entry_bb_mid is None:
+            return None
+        tp = self._entry_bb_mid
+        tp_dist = abs(entry_price - tp)
+        if tp_dist <= 0:
+            return None
+        sl_dist = tp_dist / 3.0
+        if side == Side.BUY:
+            return entry_price - sl_dist, tp
+        return entry_price + sl_dist, tp
+
+
 # Registry of all 26 strategies
 KRAKEN_STRATEGIES = [
     CCIMACDStrategy,
@@ -1312,4 +1389,5 @@ KRAKEN_STRATEGIES = [
     EMA921EMA78TrendM15Strategy,
     FollowTheTrendH4Strategy,
     FollowTheTrendD1Strategy,
+    GoldmineXAUUSDStrategy,
 ]

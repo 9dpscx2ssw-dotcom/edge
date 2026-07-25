@@ -361,3 +361,12 @@ strategies:
     symbols: []
     params:
       period_ema: 9
+
+  # Source app "Goldmine": BB(20,2) + Stochastic(5,3,3), point-designed for
+  # XAUUSD — Gungnir's configured epic for that pair is GOLD (config.yaml),
+  # so symbols is scoped there rather than left open to the whole universe.
+  - name: goldmine_xauusd
+    mode: "off"
+    timeframe: 1d
+    symbols: [GOLD]
+    params: {}
