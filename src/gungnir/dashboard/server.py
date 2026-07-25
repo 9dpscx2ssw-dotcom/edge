@@ -1034,6 +1034,7 @@ def create_app() -> FastAPI:
         "max_spread_bps": lambda v: float(v) >= 0,
         "adx_trend": lambda v: float(v) >= 0,
         "noise_min_ema_atr": lambda v: float(v) >= 0,
+        "noise_max_ema_atr": lambda v: float(v) >= 0,
         "min_timeframe_minutes": lambda v: float(v) >= 0,
     }
     _FILTER_MODES = {"regime_mode": {"observe", "shadow", "enforce"},

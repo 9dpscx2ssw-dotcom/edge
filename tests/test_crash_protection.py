@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from gungnir.config import Config, Secrets
 from gungnir.data.models import Side, Signal
-from gungnir.risk.cooldown import LossStreakGuard
+from gungnir.risk.cooldown import LossStreakGuard, ReentryCooldown
 from gungnir.risk.portfolio import DrawdownTracker, PortfolioRisk
 
 
@@ -119,3 +119,27 @@ def test_disabled_guard_never_blocks():
     for _ in range(10):
         g.record("mr", "US500", -50.0, now=1000.0)
     assert g.blocked_seconds("mr", "US500", now=1001.0) == 0
+
+
+# ── Re-entry cooldown (unconditional churn brake) ─────────────────────────────
+
+def test_reentry_cooldown_spaces_reopen_by_bars():
+    # 3 bars × 900s (15m) = 2700s window after the last close.
+    g = ReentryCooldown(bars=3)
+    g.record_close("hma_dc_m15", "US500", now=1000.0)
+    bar = 15 * 60
+    assert g.blocked_seconds("hma_dc_m15", "US500", bar, now=1000.0 + 100) > 0   # inside
+    assert g.blocked_seconds("hma_dc_m15", "US500", bar, now=1000.0 + 2701) == 0  # served
+    # Different pairing is unaffected (win or lose, per (strategy, symbol)).
+    assert g.blocked_seconds("hma_dc_m15", "GOLD", bar, now=1000.0 + 100) == 0
+    assert g.blocked_seconds("trend", "US500", bar, now=1000.0 + 100) == 0
+
+
+def test_reentry_cooldown_disabled_and_no_prior_close_never_block():
+    off = ReentryCooldown(bars=0)
+    off.record_close("mr", "US500", now=1000.0)
+    assert off.blocked_seconds("mr", "US500", 900, now=1000.0 + 1) == 0   # off
+    on = ReentryCooldown(bars=3)
+    assert on.blocked_seconds("mr", "US500", 900, now=1000.0) == 0        # no close yet
+    on.record_close("mr", "US500", now=1000.0)
+    assert on.blocked_seconds("mr", "US500", 0, now=1000.0 + 1) == 0      # unknown bar len

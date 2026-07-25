@@ -269,12 +269,18 @@ class Agent:
         self._rl_diverged: bool = False
         # Loss-streak cooldown: bench a strategy on a symbol after N straight
         # losing round-trips there (the counter-trend re-entry loop).
-        from ..risk.cooldown import LossStreakGuard
+        from ..risk.cooldown import LossStreakGuard, ReentryCooldown
         self._cooldown = LossStreakGuard(
             max_streak=int(config.get("risk", "loss_streak_trades", default=3) or 0),
             cooldown_minutes=float(
                 config.get("risk", "loss_streak_cooldown_minutes", default=60) or 0),
         )
+        # Unconditional per-strategy re-entry spacing (churn brake). Blocks a
+        # re-open for N bars of the strategy's own timeframe after any close,
+        # win or lose — targets the flicker re-entries the edge-triggered
+        # emitter misses. 0 ⇒ off.
+        self._reentry = ReentryCooldown(
+            bars=int(config.get("risk", "reentry_cooldown_bars", default=0) or 0))
 
         # ── operational controls (institutional-practices tranche) ──────────
         # Hash-chained audit trail, operator alerting, pre-trade compliance,
@@ -1024,6 +1030,7 @@ class Agent:
         if closed.mode != "learning":
             if closed.pnl is not None:
                 self._cooldown.record(closed.strategy or "", closed.symbol, closed.pnl)
+                self._reentry.record_close(closed.strategy or "", closed.symbol)
                 # Real account P/L is strictly real-book only. Shadow closes remain
                 # journaled for analytics but must never change the real total.
                 if closed.mode == "real" and self._closed_pl is not None:
@@ -1908,6 +1915,16 @@ class Agent:
                 if wait > 0:
                     self._filter_rejects["cooldown"] += 1
                     self.journal.record_signal(signal, "rejected_cooldown",
+                                               features.last_price)
+                    continue
+
+                # Re-entry spacing: a level signal that flickered off then
+                # re-fired within N bars of the last close is churn — skip it.
+                if self._reentry.blocked_seconds(
+                        strat.name, symbol,
+                        self._tf_minutes(getattr(strat, "timeframe", "") or "") * 60) > 0:
+                    self._filter_rejects["reentry"] += 1
+                    self.journal.record_signal(signal, "rejected_reentry",
                                                features.last_price)
                     continue
 

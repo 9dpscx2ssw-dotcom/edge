@@ -96,9 +96,18 @@ class FilterConfig:
     # below ``noise_min_ema_atr`` ATRs (chop, no established trend). Ships in
     # ``observe`` (tags every decision but blocks nothing) so the signal can be
     # validated against realized PnL before it ever gates a trade.
+    #
+    # ``noise_max_ema_atr`` adds the opposite bound: block entries where the
+    # spread is ABOVE it (the move is already extended, so a fresh entry is
+    # late — the runtime data's separation gradient is non-monotonic, with the
+    # 0.5–1.0 ATR band winning and both the compressed and extended tails
+    # losing). It converts the floor into a band. 0.0 disables the upper bound
+    # so the default behaviour is unchanged (floor only); it is the least
+    # out-of-sample-validated half of the gate and must be opted into.
     noise: bool = False
     noise_mode: str = "observe"          # observe | enforce
     noise_min_ema_atr: float = 0.4
+    noise_max_ema_atr: float = 0.0       # 0 ⇒ no upper bound (floor only)
     # Minimum-timeframe gate: block signals from strategies whose timeframe is
     # below ``min_timeframe_minutes`` (sub-hourly strategies were structurally
     # negative in every runtime window). Off by default — the least out-of-
@@ -165,10 +174,12 @@ def evaluate_noise(features, cfg: FilterConfig) -> tuple[bool, float | None]:
     """No-trend-structure reading for one decision.
 
     Returns ``(would_block, ema_spread_in_atr)``. ``would_block`` is True when
-    the fast/slow EMA spread is below ``noise_min_ema_atr`` ATRs — a chop entry
-    with no established trend. Pure and side-effect-free; the caller decides
-    whether to act (``enforce``) or merely tag it (``observe``). ATR/EMA missing
-    ⇒ ``(False, None)`` so a thin feature set never blocks.
+    the fast/slow EMA spread is below ``noise_min_ema_atr`` ATRs (a chop entry
+    with no established trend) or — when ``noise_max_ema_atr`` is set — above it
+    (the trend is already extended, so a fresh entry is late). Pure and
+    side-effect-free; the caller decides whether to act (``enforce``) or merely
+    tag it (``observe``). ATR/EMA missing ⇒ ``(False, None)`` so a thin feature
+    set never blocks.
     """
     ef = getattr(features, "ema_fast", None)
     es = getattr(features, "ema_slow", None)
@@ -176,7 +187,9 @@ def evaluate_noise(features, cfg: FilterConfig) -> tuple[bool, float | None]:
     if ef is None or es is None or not atr or atr <= 0:
         return False, None
     ext = abs(float(ef) - float(es)) / float(atr)
-    return ext < cfg.noise_min_ema_atr, round(ext, 4)
+    too_tight = ext < cfg.noise_min_ema_atr
+    too_wide = cfg.noise_max_ema_atr > 0 and ext > cfg.noise_max_ema_atr
+    return too_tight or too_wide, round(ext, 4)
 
 
 def market_regime_filter(signal, sentiment) -> tuple[bool, str | None]:

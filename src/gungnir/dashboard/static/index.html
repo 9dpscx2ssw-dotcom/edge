@@ -1226,6 +1226,7 @@ volumes:
           <div class="ctrl"><label>Max spread (bps)</label><input id="flt-maxspread" type="number" step="0.1"></div>
           <div class="ctrl"><label>ADX trend thresh</label><input id="flt-adx" type="number" step="1"></div>
           <div class="ctrl"><label>Noise min EMA/ATR</label><input id="flt-noisemin" type="number" step="0.05"></div>
+          <div class="ctrl" title="Upper bound of the separation band: block entries where EMA spread exceeds this many ATRs (already-extended, late). 0 = off (floor only)."><label>Noise max EMA/ATR</label><input id="flt-noisemax" type="number" step="0.05"></div>
           <div class="ctrl"><label>Min timeframe (min)</label><input id="flt-mintf" type="number" step="5"></div>
           <button class="btn" id="flt-save">Save Filters</button>
         </div>
@@ -2372,6 +2373,7 @@ async function loadSettings(){
     $('flt-maxspread').value = flt.max_spread_bps ?? '';
     $('flt-adx').value = flt.adx_trend ?? '';
     $('flt-noisemin').value = flt.noise_min_ema_atr ?? '';
+    $('flt-noisemax').value = flt.noise_max_ema_atr ?? '';
     $('flt-mintf').value = flt.min_timeframe_minutes ?? '';
     const rj=((STATUS.filters||{}).rejects)||{};
     // Keep consensus veto/block counters visible even at zero; otherwise a
@@ -2439,7 +2441,7 @@ async function saveFilters(){
   const n=(id,key)=>{ const v=parseFloat($(id).value); if(!isNaN(v)) body[key]=v; };
   n('flt-volmin','vol_min'); n('flt-volmax','vol_max'); n('flt-volr','min_volume_ratio');
   n('flt-maxspread','max_spread_bps'); n('flt-adx','adx_trend');
-  n('flt-noisemin','noise_min_ema_atr'); n('flt-mintf','min_timeframe_minutes');
+  n('flt-noisemin','noise_min_ema_atr'); n('flt-noisemax','noise_max_ema_atr'); n('flt-mintf','min_timeframe_minutes');
   try{ await api('/api/filters',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); $('flt-save').textContent='Saved ✓'; await loadSettings(); setTimeout(()=>$('flt-save').textContent='Save Filters',1500); }catch(e){ $('flt-save').textContent='Failed'; }
 }
 async function saveLearning(){

@@ -199,6 +199,33 @@ def test_noise_mode_from_dict_validates():
                                    "noise_min_ema_atr": 0.6}).noise_min_ema_atr == 0.6
 
 
+def test_noise_max_band_blocks_extended_entry():
+    # Band [0.4, 1.5]: 2.0-ATR spread is above the upper bound (already extended).
+    cfg = FilterConfig(noise=True, noise_mode="enforce",
+                       noise_min_ema_atr=0.4, noise_max_ema_atr=1.5)
+    extended = _feat(ema_fast=101.0, ema_slow=99.0, atr=1.0)   # 2.0 ATR spread
+    would_ext, ext_ext = filters.evaluate_noise(extended, cfg)
+    assert would_ext is True and ext_ext == 2.0
+    assert filters.apply(_sig(), extended, "x", cfg, "EURUSD") == (False, "noise")
+    # A spread comfortably inside the band passes.
+    band_ok = _feat(ema_fast=100.5, ema_slow=99.5, atr=1.0)    # 1.0 ATR spread
+    assert filters.evaluate_noise(band_ok, cfg)[0] is False
+    assert filters.apply(_sig(), band_ok, "x", cfg, "EURUSD")[0] is True
+
+
+def test_noise_max_zero_disables_upper_bound():
+    # noise_max_ema_atr defaults to 0 ⇒ floor-only behaviour, wide spreads pass.
+    cfg = FilterConfig(noise=True, noise_mode="enforce", noise_min_ema_atr=0.4)
+    assert cfg.noise_max_ema_atr == 0.0
+    wide = _feat(ema_fast=110.0, ema_slow=90.0, atr=1.0)       # 20 ATR spread
+    assert filters.evaluate_noise(wide, cfg)[0] is False
+    assert filters.apply(_sig(), wide, "x", cfg, "EURUSD")[0] is True
+
+
+def test_noise_max_from_dict_casts():
+    assert FilterConfig.from_dict({"noise_max_ema_atr": 1.5}).noise_max_ema_atr == 1.5
+
+
 def test_consensus_family_is_ensemble_and_regime_avoid_vetoes():
     # CF1 relies on evaluate_regime("consensus", ...) resolving to the ensemble
     # family so a `family: ensemble ... avoid` rule actually gates the consensus
