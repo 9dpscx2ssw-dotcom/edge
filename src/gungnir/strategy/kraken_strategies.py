@@ -565,12 +565,47 @@ class EMAStochRSIStrategy(Strategy):
 
 
 class CCIReversalStrategy(Strategy):
-    """S6: CCI(14) Reversal — H1."""
+    """S6: CCI(14) Reversal — H1.
+
+    Overwritten in place to match the source app spec ("CCI strategy") — the
+    prior version wasn't faithful to begin with, so there's no earlier
+    empirical rationale to protect by splitting into a variant. This one
+    matters more than the others: it was running `mode: shadow` in the
+    curated live pool with its entry direction literally INVERTED from the
+    app, and its live-shadow track record (29% win, -31.2 pnl — one of the
+    "broken archetype" strategies `patch_control_broken_archetypes.py`
+    targets) is consistent with that inversion.
+
+    App rule (a momentum-confirmation reversal, not a single-threshold
+    contrarian trigger): buy when CCI is CURRENTLY in the overbought zone
+    (>=150) but was in the oversold zone (<=-150) at some point before that;
+    mirror for sells. The old code fired on a single threshold touch with NO
+    prior-zone memory, and in the OPPOSITE direction (bought oversold,
+    i.e. "buy the dip" — the app buys confirmed strength AFTER a washout,
+    not the washout itself).
+
+    `_last_extreme` is the per-symbol state: the most recent extreme zone
+    touched. A signal fires only when the CURRENT zone is the opposite of
+    the remembered one, which also makes it self-consuming — after firing,
+    the state updates to the current zone, so a sustained overbought read
+    can't refire until CCI dips to oversold again.
+    """
 
     name = "cci_reversal"
     family = "meanrev"
-    DEFAULTS = {"cci_threshold": 100.0, "conviction_base": 0.5}
-    BOUNDS = {"cci_threshold": (50.0, 250.0), "conviction_base": (0.3, 0.8)}
+    DEFAULTS = {
+        "cci_threshold": 150.0,
+        "conviction_base": 0.5,
+        "tp_points": 17.5,      # app: 15-20 points from entry
+        "sl_points": 5.0,       # app: 5 points from entry
+        "fixed_exit_enabled": 1.0,
+    }
+    BOUNDS = {"cci_threshold": (100.0, 200.0), "conviction_base": (0.3, 0.8),
+              "tp_points": (10.0, 25.0), "sl_points": (3.0, 10.0)}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._last_extreme: dict[str, str] = {}   # symbol -> "oversold" | "overbought"
 
     def generate(self, features: KrakenFeatureSet) -> list[Signal]:
         if not isinstance(features, KrakenFeatureSet):
@@ -578,12 +613,40 @@ class CCIReversalStrategy(Strategy):
         thr = self.p("cci_threshold")
         base = self.p("conviction_base")
         cci = features.cci14
+        symbol = features.symbol
         conviction = base + 0.3 * min(max(abs(cci) - thr, 0.0) / max(thr, 1e-9), 1.0)
-        if cci < -thr:
-            return _sig(self, features, Side.BUY, conviction)
-        elif cci > thr:
-            return _sig(self, features, Side.SELL, conviction)
-        return []
+
+        in_overbought = cci >= thr
+        in_oversold = cci <= -thr
+        prev = self._last_extreme.get(symbol)
+        signal: list[Signal] = []
+        if in_overbought and prev == "oversold":
+            signal = _sig(self, features, Side.BUY, conviction)
+        elif in_oversold and prev == "overbought":
+            signal = _sig(self, features, Side.SELL, conviction)
+
+        # Update the remembered extreme AFTER deciding — the confirmation
+        # must compare against the zone touched BEFORE this bar, and this
+        # also makes the state self-consuming (see class docstring).
+        if in_overbought:
+            self._last_extreme[symbol] = "overbought"
+        elif in_oversold:
+            self._last_extreme[symbol] = "oversold"
+        return signal
+
+    def custom_brackets(
+        self, side: Side, entry_price: float, symbol: str
+    ) -> tuple[float | None, float | None] | None:
+        if self.p("fixed_exit_enabled") <= 0:
+            return None
+        point = _fx_point_size(symbol)
+        if not point:
+            return None   # not a recognized FX pair -> generic ATR bracket applies
+        tp_dist = self.p("tp_points") * point
+        sl_dist = self.p("sl_points") * point
+        if side == Side.BUY:
+            return entry_price - sl_dist, entry_price + tp_dist
+        return entry_price + sl_dist, entry_price - tp_dist
 
 
 class ADXMomentumStrategy(Strategy):

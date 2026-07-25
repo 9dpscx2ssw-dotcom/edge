@@ -89,7 +89,8 @@ strategies:
     symbols: []
     params:
       period_cci: 14
-      threshold: 100
+      cci_threshold: 150         # app spec's overbought/oversold zone (was "threshold",
+                                  # a key the code never read — silently inert)
 
   # ── New EMA strategies (shadow, independently attributed at M5 and M15) ──
   - name: ema921_adx_dmi_m5
