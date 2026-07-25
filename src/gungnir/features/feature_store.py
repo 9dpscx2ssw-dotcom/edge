@@ -124,16 +124,28 @@ def build_kraken_series(symbol: str, candles: list[Candle]) -> list["KrakenFeatu
     ml13_a, _, _ = kraken_indicators.macd(closes, 13, 26, 9)
     ml5_a, _, hist5_a = kraken_indicators.macd(closes, 5, 7, 4)
     ml5_10_a, _, _ = kraken_indicators.macd(closes, 5, 10, 4)   # follow_the_trend_h4/d1
+    _, _, hist13_26_a = kraken_indicators.macd(closes, 13, 26, 9)   # scalp_macd_stoch_10pt
     sar_a, sar_trend_a = kraken_indicators.parabolic_sar(highs, lows)
     k_a, d_a = kraken_indicators.stochastic(highs, lows, closes, 14, 3, 3)
     k5_a, d5_a = kraken_indicators.stochastic(highs, lows, closes, 5, 3, 3)   # goldmine_xauusd
     adx_a, pdi_a, mdi_a = kraken_indicators.adx(highs, lows, closes, 14)
     adx28_a, pdi28_a, mdi28_a = kraken_indicators.adx(highs, lows, closes, 28)   # follow_the_trend_h4/d1
     mom_a = kraken_indicators.momentum(closes, 14)
+    mom30_a = kraken_indicators.momentum(closes, 30)   # momentum_forex
     ao_a = kraken_indicators.awesome_oscillator(highs, lows)
+    ac_a = kraken_indicators.accelerator_oscillator(highs, lows)   # psar_ao_ac
     hma55_a = kraken_indicators.hma(closes, 55)
     dc_trend_a, dc_u_a, dc_l_a, dc_m_a = kraken_indicators.donchian_trend(highs, lows, closes, 20)
     jaw_a, teeth_a, lips_a = kraken_indicators.alligator(highs, lows)
+    cci30_a = kraken_indicators.cci(highs, lows, closes, 30)   # cci_ema_psar / cci_ema_fixed
+    ema28_a = indicators.ema(closes, 28)
+    williams25_a = kraken_indicators.williams_r(highs, lows, closes, 25)   # bb_williams_rsi_ranging
+    senkou_b_a = kraken_indicators.ichimoku_senkou_b(highs, lows)   # ichimoku_awesome
+    sma13_a, sma26_a, sma100_a = (kraken_indicators.sma(closes, 13), kraken_indicators.sma(closes, 26),
+                                    kraken_indicators.sma(closes, 100))   # triple_sma
+    sma11_a, sma21_a = kraken_indicators.sma(closes, 11), kraken_indicators.sma(closes, 21)   # momentum_forex
+    ema100_a = indicators.ema(closes, 100)   # ema100_dual_tf
+    ema200_a = indicators.ema(closes, 200)   # ema200_awesome
 
     # VWAP is cumulative from the series start, so the full-series value at bar i is
     # the running VWAP up to i — correct without re-slicing.
@@ -183,7 +195,7 @@ def build_kraken_series(symbol: str, candles: list[Candle]) -> list["KrakenFeatu
             stoch5_k=_at(k5_a, i, 50.0), stoch5_d=_at(d5_a, i, 50.0),
             prev_stoch5_k=_at(k5_a, i - 1, 50.0), prev_stoch5_d=_at(d5_a, i - 1, 50.0),
             ema4=_at(ema4_a, i, last), prev_ema4=_at(ema4_a, i - 1, last),
-            ema5=_at(ema5_a, i, last),
+            ema5=_at(ema5_a, i, last), prev_ema5=_at(ema5_a, i - 1, last),
             ema7=_at(ema7_a, i, last), prev_ema7=_at(ema7_a, i - 1, last),
             ema8=_at(ema8_a, i, last), prev_ema8=_at(ema8_a, i - 1, last),
             ema9=_at(ema9_a, i, last), prev_ema9=_at(ema9_a, i - 1, last),
@@ -208,6 +220,19 @@ def build_kraken_series(symbol: str, candles: list[Candle]) -> list["KrakenFeatu
             fvg_bear_bot=bear["fvg_bot"] if bear else 0.0,
             alligator_jaw=_at(jaw_a, i), alligator_teeth=_at(teeth_a, i), alligator_lips=_at(lips_a, i),
             pivot=float(piv), pivot_r1=float(piv_r1), pivot_s1=float(piv_s1),
+            cci30=_at(cci30_a, i), ema28=_at(ema28_a, i, last), prev_ema28=_at(ema28_a, i - 1, last),
+            rsi5=_at_rsi(closes, i, 5), prev_rsi5=_at_rsi(closes, i - 1, 5),
+            momentum30=_at(mom30_a, i, 100.0), prev_momentum30=_at(mom30_a, i - 1, 100.0),
+            williams_r25=_at(williams25_a, i, -50.0), prev_williams_r25=_at(williams25_a, i - 1, -50.0),
+            ac=_at(ac_a, i), prev_ac=_at(ac_a, i - 1),
+            senkou_b=_at(senkou_b_a, i, last),
+            sma13=_at(sma13_a, i, last), prev_sma13=_at(sma13_a, i - 1, last),
+            sma26=_at(sma26_a, i, last), prev_sma26=_at(sma26_a, i - 1, last),
+            sma100=_at(sma100_a, i, last), prev_sma100=_at(sma100_a, i - 1, last),
+            macd_hist_13_26=_at(hist13_26_a, i),
+            sma11=_at(sma11_a, i, last), sma21=_at(sma21_a, i, last),
+            ema100=_at(ema100_a, i, last), prev_ema100=_at(ema100_a, i - 1, last),
+            ema200=_at(ema200_a, i, last),
         ))
     return out
 
@@ -270,6 +295,7 @@ class KrakenFeatureSet(FeatureSet):
     ema4: float = 0.0            # follow_the_trend_h4/d1's fast leg
     prev_ema4: float = 0.0
     ema5: float = 0.0
+    prev_ema5: float = 0.0
     ema7: float = 0.0
     prev_ema7: float = 0.0
     ema8: float = 0.0
@@ -326,6 +352,32 @@ class KrakenFeatureSet(FeatureSet):
     pivot: float = 0.0
     pivot_r1: float = 0.0
     pivot_s1: float = 0.0
+
+    # ── Final strategy-bank batch additions ──
+    cci30: float = 0.0        # cci_ema_psar / cci_ema_fixed's own CCI period
+    ema28: float = 0.0        # cci_ema_psar / cci_ema_fixed's slow EMA leg
+    prev_ema28: float = 0.0
+    rsi5: float = 50.0        # bb_williams_rsi_ranging's own RSI period
+    prev_rsi5: float = 50.0
+    momentum30: float = 100.0  # momentum_forex's own Momentum period (ratio*100, oscillates around 100)
+    prev_momentum30: float = 100.0
+    williams_r25: float = -50.0   # bb_williams_rsi_ranging's Williams %R(25), range [-100, 0]
+    prev_williams_r25: float = -50.0
+    ac: float = 0.0           # Accelerator Oscillator — psar_ao_ac
+    prev_ac: float = 0.0
+    senkou_b: float = 0.0     # Ichimoku Senkou Span B — ichimoku_awesome
+    sma13: float = 0.0        # triple_sma's fast leg
+    prev_sma13: float = 0.0
+    sma26: float = 0.0        # triple_sma's mid leg
+    prev_sma26: float = 0.0
+    sma100: float = 0.0       # triple_sma's slow leg
+    prev_sma100: float = 0.0
+    macd_hist_13_26: float = 0.0  # MACD(13,26,9) histogram — scalp_macd_stoch_10pt
+    sma11: float = 0.0        # momentum_forex's fast leg
+    sma21: float = 0.0        # momentum_forex's slow leg
+    ema100: float = 0.0       # ema100_dual_tf
+    prev_ema100: float = 0.0
+    ema200: float = 0.0       # ema200_awesome
 
     # Candle history (for indicators that need it)
     candles: list[Candle] = Field(default_factory=list)
@@ -389,6 +441,7 @@ def build_kraken(
     ml13, sl13, hist13 = kraken_indicators.macd(closes, 13, 26, 9)
     ml5, sl5, hist5 = kraken_indicators.macd(closes, 5, 7, 4)
     ml5_10, _, _ = kraken_indicators.macd(closes, 5, 10, 4)   # follow_the_trend_h4/d1
+    _, _, hist13_26 = kraken_indicators.macd(closes, 13, 26, 9)   # scalp_macd_stoch_10pt
 
     # SAR
     sar, sar_trend = kraken_indicators.parabolic_sar(highs, lows)
@@ -399,7 +452,9 @@ def build_kraken(
 
     # EMAs
     ema4_a = indicators.ema(closes, 4)
-    ema5 = float(indicators.ema(closes, 5)[-1])
+    ema5_a = indicators.ema(closes, 5)
+    ema5 = float(ema5_a[-1])
+    prev_ema5 = float(ema5_a[-2]) if len(ema5_a) > 1 else ema5
     ema7_a, ema8_a, ema9_a = (indicators.ema(closes, 7), indicators.ema(closes, 8),
                                indicators.ema(closes, 9))
     ema10_a = indicators.ema(closes, 10)
@@ -433,11 +488,31 @@ def build_kraken(
 
     # Momentum & AO
     mom = kraken_indicators.momentum(closes, 14)
+    mom30_arr = kraken_indicators.momentum(closes, 30)   # momentum_forex
     ao = kraken_indicators.awesome_oscillator(highs, lows)
+    ac_arr = kraken_indicators.accelerator_oscillator(highs, lows)   # psar_ao_ac
 
     # HMA & Donchian
     hma55 = float(kraken_indicators.hma(closes, 55)[-1])
     dc_trend, dc_u, dc_l, dc_m = kraken_indicators.donchian_trend(highs, lows, closes, 20)
+
+    # Final batch: CCI(30), EMA(28), RSI(5), Momentum(30), Williams %R(25),
+    # Accelerator Oscillator, Ichimoku Senkou Span B, SMA(13/26/100).
+    cci30_arr = kraken_indicators.cci(highs, lows, closes, 30)
+    ema28_a = indicators.ema(closes, 28)
+    ema28 = float(ema28_a[-1])
+    prev_ema28 = float(ema28_a[-2]) if len(ema28_a) > 1 else ema28
+    williams25_arr = kraken_indicators.williams_r(highs, lows, closes, 25)
+    senkou_b_arr = kraken_indicators.ichimoku_senkou_b(highs, lows)
+    sma13_arr = kraken_indicators.sma(closes, 13)
+    sma26_arr = kraken_indicators.sma(closes, 26)
+    sma100_arr = kraken_indicators.sma(closes, 100)
+    sma11_arr = kraken_indicators.sma(closes, 11)
+    sma21_arr = kraken_indicators.sma(closes, 21)
+    ema100_a = indicators.ema(closes, 100)
+    ema100 = float(ema100_a[-1])
+    prev_ema100 = float(ema100_a[-2]) if len(ema100_a) > 1 else ema100
+    ema200 = float(indicators.ema(closes, 200)[-1])
 
     # VWAP
     vwap = kraken_indicators.vwap(df)
@@ -505,6 +580,7 @@ def build_kraken(
         ema4=ema4,
         prev_ema4=prev_ema4,
         ema5=ema5,
+        prev_ema5=prev_ema5,
         ema7=ema7,
         prev_ema7=prev_ema7,
         ema8=ema8,
@@ -559,6 +635,28 @@ def build_kraken(
         pivot=float(piv),
         pivot_r1=float(piv_r1),
         pivot_s1=float(piv_s1),
+        # Final strategy-bank batch
+        cci30=float(cci30_arr[-1]) if len(cci30_arr) else 0.0,
+        ema28=ema28, prev_ema28=prev_ema28,
+        rsi5=indicators.rsi(closes, 5),
+        prev_rsi5=indicators.rsi(closes[:-1], 5) if len(closes) > 5 else 50.0,
+        momentum30=float(mom30_arr[-1]) if len(mom30_arr) else 100.0,
+        prev_momentum30=float(mom30_arr[-2]) if len(mom30_arr) > 1 else 100.0,
+        williams_r25=float(williams25_arr[-1]) if len(williams25_arr) else -50.0,
+        prev_williams_r25=float(williams25_arr[-2]) if len(williams25_arr) > 1 else -50.0,
+        ac=float(ac_arr[-1]) if len(ac_arr) else 0.0,
+        prev_ac=float(ac_arr[-2]) if len(ac_arr) > 1 else 0.0,
+        senkou_b=float(senkou_b_arr[-1]) if len(senkou_b_arr) and np.isfinite(senkou_b_arr[-1]) else last,
+        sma13=float(sma13_arr[-1]) if len(sma13_arr) else last,
+        prev_sma13=float(sma13_arr[-2]) if len(sma13_arr) > 1 else last,
+        sma26=float(sma26_arr[-1]) if len(sma26_arr) else last,
+        prev_sma26=float(sma26_arr[-2]) if len(sma26_arr) > 1 else last,
+        sma100=float(sma100_arr[-1]) if len(sma100_arr) else last,
+        prev_sma100=float(sma100_arr[-2]) if len(sma100_arr) > 1 else last,
+        macd_hist_13_26=float(hist13_26[-1]) if len(hist13_26) else 0.0,
+        sma11=float(sma11_arr[-1]) if len(sma11_arr) else last,
+        sma21=float(sma21_arr[-1]) if len(sma21_arr) else last,
+        ema100=ema100, prev_ema100=prev_ema100, ema200=ema200,
         # Context
         candles=candles,
         orderbook=analyze(book) if book else None,

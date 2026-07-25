@@ -378,3 +378,106 @@ strategies:
     timeframe: 15m
     symbols: [EURUSD, GBPUSD]
     params: {}
+
+  # ── Final strategy-bank batch (25 Jul): app-spec strategies from the last
+  # screenshot round. All new, never traded — start off like every prior
+  # addition this session.
+
+  # Source app "Parabolic SAR & Awesome": PSAR(0.01,0.1) + EMA5 + AO,
+  # scoped to the app's own instrument pairs.
+  - name: parsar_awesome
+    mode: "off"
+    timeframe: 30m
+    symbols: [USDCHF, EURUSD]
+    params: {}
+
+  # Source app "Strategy based on the indicators CCI and EMA": PSAR(0.2,0.02)
+  # + EMA(8,28) + CCI(30), SAR-trailed stop.
+  - name: cci_ema_psar
+    mode: "off"
+    timeframe: 1h
+    symbols: []
+    params: {}
+
+  # Source app "Strategy based on EMA, ADX and MACD": mirror-image entry
+  # conditions of follow_the_trend_h4/d1 (same indicator set, inverted
+  # signs) — kept as a fully separate strategy, not a variant.
+  - name: ema_adx_macd_contrarian
+    mode: "off"
+    timeframe: 4h
+    symbols: []
+    params: {}
+
+  # Source app "Momentum Forex Trading": SMA(11,21) + Momentum(30) + RSI(14),
+  # RSI-exhaustion exit.
+  - name: momentum_forex
+    mode: "off"
+    timeframe: 15m
+    symbols: []
+    params: {}
+
+  # Source app "Three indicators": PSAR + Awesome Oscillator + Accelerator
+  # Oscillator, same-candle trigger.
+  - name: psar_ao_ac
+    mode: "off"
+    timeframe: 1h
+    symbols: []
+    params: {}
+
+  # Source app "Trading system CCI and EMA": same EMA(8,28)/CCI(30) entry as
+  # cci_ema_psar above, but fixed-points exit instead of SAR trail — the
+  # app's own distinct risk-management overlay, kept separate.
+  - name: cci_ema_fixed
+    mode: "off"
+    timeframe: 30m
+    symbols: []
+    params: {}
+
+  # Source app "100 EMA on two timeframes": M15 EMA(5,100) cross confirmed
+  # by H1 EMA(5,100) alignment via confirm_timeframe.
+  - name: ema100_dual_tf
+    mode: "off"
+    timeframe: 15m
+    symbols: []
+    params: {}
+
+  # Source app "Strategy with the use of the indicators Ichimoku and Awesome
+  # Oscillator": Senkou Span B + AO.
+  - name: ichimoku_awesome
+    mode: "off"
+    timeframe: 1h
+    symbols: []
+    params: {}
+
+  # Source app 'Scalping system "10 points"': MACD(13,26,9) + Stochastic(5,3,3).
+  - name: scalp_macd_stoch_10pt
+    mode: "off"
+    timeframe: 1m
+    symbols: []
+    params: {}
+
+  # Source app "Strategy with the use of EMA and Awesome Oscillator":
+  # EMA(200) + AO.
+  - name: ema200_awesome
+    mode: "off"
+    timeframe: 1h
+    symbols: []
+    params: {}
+
+  # Source app "The right moment": BB(20,2) + Williams %R(25) + RSI(5) — the
+  # app describes continuous ranging-market trade management that doesn't
+  # reduce to a simple rule pair; this keeps the concrete entry trigger and
+  # approximates the exit as a BB-mid/band bracket (see class docstring).
+  - name: bb_williams_rsi_ranging
+    mode: "off"
+    timeframe: 15m
+    symbols: []
+    params: {}
+
+  # Source app "Strategy with the use of three moving average lines":
+  # SMA(13,26,100) triple cross, SMA13/26-cross exit.
+  - name: triple_sma
+    mode: "off"
+    timeframe: 4h
+    symbols: []
+    params: {}

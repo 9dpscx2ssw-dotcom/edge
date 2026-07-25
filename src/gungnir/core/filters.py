@@ -37,6 +37,13 @@ STRATEGY_FAMILIES = {
     "fvg_m1": "structure", "fvg_m5": "structure", "fvg_m15": "structure", "fvg_m30": "structure",
     "scalp_ema_vwap_m1": "scalp", "scalp_ema_vwap_m5": "scalp",
     "hma_dc_m1": "hybrid", "hma_dc_m5": "hybrid", "hma_dc_m15": "hybrid", "hma_dc_h1": "hybrid", "hma_dc_h4": "hybrid", "hma_dc_d1": "hybrid", "consensus": "ensemble",
+    # Final strategy-bank batch (25 Jul): app-spec strategies from the last
+    # screenshot round.
+    "parsar_awesome": "trend", "cci_ema_psar": "trend", "cci_ema_fixed": "trend",
+    "ema100_dual_tf": "trend", "ichimoku_awesome": "trend", "ema200_awesome": "trend",
+    "triple_sma": "trend", "momentum_forex": "trend", "psar_ao_ac": "trend",
+    "ema_adx_macd_contrarian": "mean_reversion", "bb_williams_rsi_ranging": "mean_reversion",
+    "scalp_macd_stoch_10pt": "scalp",
 }
 _REGIME_MODES = {"observe", "shadow", "enforce"}
 _NOISE_MODES = {"observe", "enforce"}

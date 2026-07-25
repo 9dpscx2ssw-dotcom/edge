@@ -51,10 +51,16 @@ class Strategy(ABC):
     trail_ema_period: int = 0
 
     # Optional strategy-specific exit signal: a strategy that sets this True
-    # has its position closed outright the moment EMA10 and EMA21 cross back
-    # against the position's side (see Agent._manage_exits). False ⇒ no
-    # effect — positions close only on stop/take-profit like everything else.
+    # has its position closed outright the moment two FeatureSet fields cross
+    # back against the position's side (see Agent._manage_exits). Which
+    # fields is configurable via `ema_cross_exit_fast`/`ema_cross_exit_slow`
+    # (default "ema10"/"ema21" — the original hardcoded pair); any two
+    # numeric FeatureSet attribute names work (e.g. "sma13"/"sma26" for
+    # triple_sma). False ⇒ no effect — positions close only on stop/take-
+    # profit like everything else.
     ema_cross_exit: bool = False
+    ema_cross_exit_fast: str = "ema10"
+    ema_cross_exit_slow: str = "ema21"
 
     # Optional strategy-specific exit signal: a strategy that sets this True
     # has its position closed outright once ITS OWN oscillator-exhaustion
@@ -75,6 +81,13 @@ class Strategy(ABC):
     # back through the teeth against the position's side (see
     # Agent._manage_exits). False ⇒ no effect.
     alligator_cross_exit: bool = False
+
+    # Optional strategy-specific exit signal, same shape as
+    # `stoch_exhaustion_exit` but reading the shared RSI(14) field instead of
+    # stochastic %K (e.g. momentum_forex: "close longs when RSI enters the
+    # overbought zone"). Thresholds read via `rsi_exit_upper`/`rsi_exit_lower`
+    # params. False ⇒ no effect.
+    rsi_exhaustion_exit: bool = False
 
     def __init__(
         self,

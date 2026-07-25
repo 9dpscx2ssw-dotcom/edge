@@ -1513,6 +1513,624 @@ class SpeculativeZigzagRSIStrategy(Strategy):
         return entry_price + sl_dist, entry_price - tp_dist
 
 
+class ParSARAwesomeStrategy(Strategy):
+    """Faithful replica of the source app "Parabolic SAR & Awesome" strategy:
+    PSAR(0.01,0.1) + EMA(5) + Awesome Oscillator — M30, USD/CHF & EUR/USD.
+
+    Entry:
+      Buy:  SAR below price AND AO green above 0 (rising, >0) AND EMA5 below
+            price.
+      Sell: SAR above price AND AO red below 0 (falling, <0) AND EMA5 above
+            price.
+    Exit (custom_brackets, FX pairs only): fixed points per symbol, from the
+    app's own exit table (USDCHF: TP50/SL18, EURUSD: TP60/SL20; any other
+    FX pair falls back to EURUSD's row, non-FX falls back to generic ATR).
+    """
+
+    name = "parsar_awesome"
+    family = "trend"
+    DEFAULTS = {"conviction_base": 0.5, "fixed_exit_enabled": 1.0}
+    BOUNDS = {"conviction_base": (0.3, 0.8)}
+    _EXIT_POINTS = {"USDCHF": (18.0, 50.0), "EURUSD": (20.0, 60.0)}
+
+    def generate(self, features: KrakenFeatureSet) -> list[Signal]:
+        if not isinstance(features, KrakenFeatureSet):
+            return []
+        price = features.last_price
+        conviction = self.p("conviction_base")
+        ao_green = features.ao > 0 and features.ao > features.prev_ao
+        ao_red = features.ao < 0 and features.ao < features.prev_ao
+        if features.sar < price and ao_green and features.ema5 < price:
+            return _sig(self, features, Side.BUY, conviction)
+        elif features.sar > price and ao_red and features.ema5 > price:
+            return _sig(self, features, Side.SELL, conviction)
+        return []
+
+    def custom_brackets(
+        self, side: Side, entry_price: float, symbol: str
+    ) -> tuple[float | None, float | None] | None:
+        if self.p("fixed_exit_enabled") <= 0:
+            return None
+        point = _fx_point_size(symbol)
+        if not point:
+            return None
+        sl_pts, tp_pts = self._EXIT_POINTS.get(symbol, self._EXIT_POINTS["EURUSD"])
+        sl_dist, tp_dist = sl_pts * point, tp_pts * point
+        if side == Side.BUY:
+            return entry_price - sl_dist, entry_price + tp_dist
+        return entry_price + sl_dist, entry_price - tp_dist
+
+
+class CCIEMAPSARStrategy(Strategy):
+    """Faithful replica of the source app "Strategy based on the indicators
+    CCI and EMA": PSAR(0.2,0.02) + EMA(8) + EMA(28) + CCI(30) — H1/H4, all
+    pairs.
+
+    Entry:
+      Buy:  EMA8 crosses EMA28 from bottom to top AND CCI(30) above 0.
+      Sell: EMA8 crosses EMA28 from top to bottom AND CCI(30) below 0.
+    Exit: outright close when EMA8/EMA28 cross back against the position
+    (``ema_cross_exit``, retargeted to this strategy's own EMA pair via
+    ``ema_cross_exit_fast``/``ema_cross_exit_slow``). The app's "stop-loss"
+    section re-lists all three indicators (PSAR, EMA8, EMA28, CCI) rather
+    than giving a fixed distance — read as "trail behind SAR," which is
+    exactly the generic ``trail_field`` mechanism (see Agent._manage_exits).
+    """
+
+    name = "cci_ema_psar"
+    family = "trend"
+    ema_cross_exit = True
+    ema_cross_exit_fast = "ema8"
+    ema_cross_exit_slow = "ema28"
+    trail_field = "sar"
+    DEFAULTS = {"conviction_base": 0.5, "trail_field_enabled": 1.0, "trail_buffer_points": 2.0}
+    BOUNDS = {"conviction_base": (0.3, 0.8)}
+
+    def generate(self, features: KrakenFeatureSet) -> list[Signal]:
+        if not isinstance(features, KrakenFeatureSet):
+            return []
+        conviction = self.p("conviction_base")
+        crossed_up = _crossed_up(features.prev_ema8, features.prev_ema28, features.ema8, features.ema28)
+        crossed_down = _crossed_down(features.prev_ema8, features.prev_ema28, features.ema8, features.ema28)
+        if crossed_up and features.cci30 > 0:
+            return _sig(self, features, Side.BUY, conviction)
+        elif crossed_down and features.cci30 < 0:
+            return _sig(self, features, Side.SELL, conviction)
+        return []
+
+
+class EMAADXMACDContrarianStrategy(Strategy):
+    """Faithful replica of the source app "Strategy based on EMA, ADX and
+    MACD": EMA(4,10) + ADX(28)/DI + MACD(5,10,4) — H4/D1, all instruments.
+
+    This is the mirror image of `_FollowTheTrendBase` ("Follow the Trend"):
+    same indicator set, but the app's entry conditions are inverted (buy on
+    a DOWN cross with negative MACD and -DI dominant — a dip-buy/reversal
+    read rather than a trend-follow), and its TP table is per-symbol rather
+    than flat, so it's kept as a fully separate strategy sharing no state
+    with `_FollowTheTrendBase`.
+
+    Entry:
+      Buy:  4EMA crosses 10EMA from ABOVE AND MACD(5,10,4) < 0 AND
+            -DI(28) > +DI(28).
+      Sell: 4EMA crosses 10EMA from BELOW AND MACD(5,10,4) > 0 AND
+            +DI(28) > -DI(28).
+    Exit (custom_brackets, FX pairs only): per-symbol TP table (H4:
+    EURUSD 60 / GBPUSD 70 / USDCHF 40; D1: EURUSD 200 / GBPUSD 250 /
+    USDCHF 150 — any other pair falls back to the EURUSD row); SL = TP/3.
+    """
+
+    name = "ema_adx_macd_contrarian"
+    family = "meanrev"
+    DEFAULTS = {"conviction_base": 0.5, "fixed_exit_enabled": 1.0}
+    BOUNDS = {"conviction_base": (0.3, 0.8)}
+    _TP_POINTS = {
+        "4h": {"EURUSD": 60.0, "GBPUSD": 70.0, "USDCHF": 40.0},
+        "1d": {"EURUSD": 200.0, "GBPUSD": 250.0, "USDCHF": 150.0},
+    }
+
+    def generate(self, features: KrakenFeatureSet) -> list[Signal]:
+        if not isinstance(features, KrakenFeatureSet):
+            return []
+        conviction = self.p("conviction_base")
+        crossed_up = _crossed_up(features.prev_ema4, features.prev_ema10, features.ema4, features.ema10)
+        crossed_down = _crossed_down(features.prev_ema4, features.prev_ema10, features.ema4, features.ema10)
+        if (crossed_down and features.macd_5_10 < 0
+                and features.minus_di28 > features.plus_di28):
+            return _sig(self, features, Side.BUY, conviction)
+        elif (crossed_up and features.macd_5_10 > 0
+                and features.plus_di28 > features.minus_di28):
+            return _sig(self, features, Side.SELL, conviction)
+        return []
+
+    def custom_brackets(
+        self, side: Side, entry_price: float, symbol: str
+    ) -> tuple[float | None, float | None] | None:
+        if self.p("fixed_exit_enabled") <= 0:
+            return None
+        point = _fx_point_size(symbol)
+        if not point:
+            return None
+        table = self._TP_POINTS.get(self.timeframe)
+        if table is None:
+            return None
+        tp_pts = table.get(symbol, table["EURUSD"])
+        tp_dist = tp_pts * point
+        sl_dist = (tp_pts / 3.0) * point
+        if side == Side.BUY:
+            return entry_price - sl_dist, entry_price + tp_dist
+        return entry_price + sl_dist, entry_price - tp_dist
+
+
+class MomentumForexStrategy(Strategy):
+    """Faithful replica of the source app "Momentum Forex Trading": SMA(21) +
+    SMA(11) + Momentum(30) + RSI(14) — M15+, all instruments.
+
+    Entry:
+      Buy:  Momentum(30) crosses 100 from below AND SMA11 > SMA21 AND price
+            above both MAs.
+      Sell: Momentum(30) crosses 100 from above AND SMA11 < SMA21 AND price
+            below both MAs.
+    Exit: outright close when RSI(14) enters the overbought/oversold zone
+    (``rsi_exhaustion_exit`` — see Agent._manage_exits), not a fixed
+    stop/target.
+    """
+
+    name = "momentum_forex"
+    family = "trend"
+    rsi_exhaustion_exit = True
+    DEFAULTS = {"conviction_base": 0.5, "rsi_exit_upper": 70.0, "rsi_exit_lower": 30.0}
+    BOUNDS = {"conviction_base": (0.3, 0.8), "rsi_exit_upper": (60.0, 85.0),
+              "rsi_exit_lower": (15.0, 40.0)}
+
+    def generate(self, features: KrakenFeatureSet) -> list[Signal]:
+        if not isinstance(features, KrakenFeatureSet):
+            return []
+        price = features.last_price
+        conviction = self.p("conviction_base")
+        mom_up = features.prev_momentum30 <= 100.0 < features.momentum30
+        mom_down = features.prev_momentum30 >= 100.0 > features.momentum30
+        if (mom_up and features.sma11 > features.sma21
+                and price > features.sma11 and price > features.sma21):
+            return _sig(self, features, Side.BUY, conviction)
+        elif (mom_down and features.sma11 < features.sma21
+                and price < features.sma11 and price < features.sma21):
+            return _sig(self, features, Side.SELL, conviction)
+        return []
+
+
+class PSARAOAcStrategy(Strategy):
+    """Faithful replica of the source app "Three indicators": Parabolic SAR
+    + Awesome Oscillator + Accelerator Oscillator — H1, major pairs.
+
+    Entry (all three on the same bar):
+      Buy:  SAR below price AND AO rising (green) AND AC rising (green).
+      Sell: SAR above price AND AO falling (red) AND AC falling (red).
+    ("Changes color from red to green" is approximated as "rising this bar,"
+    the same AO-color proxy already used by `parsar_awesome` — a real color
+    change also needs the PRIOR bar's direction, which isn't tracked.)
+    Exit (custom_brackets): SL at the signal candle's low/high; TP at the
+    same distance (the app's primary exit rule — the AO/AC-both-turn-red
+    alternative exit isn't implemented, it's explicitly optional in the
+    source text).
+    """
+
+    name = "psar_ao_ac"
+    family = "trend"
+    DEFAULTS = {"conviction_base": 0.5, "fixed_exit_enabled": 1.0}
+    BOUNDS = {"conviction_base": (0.3, 0.8)}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._entry_candle = None
+
+    def generate(self, features: KrakenFeatureSet) -> list[Signal]:
+        if not isinstance(features, KrakenFeatureSet) or not features.candles:
+            return []
+        price = features.last_price
+        conviction = self.p("conviction_base")
+        ao_up, ao_down = features.ao > features.prev_ao, features.ao < features.prev_ao
+        ac_up, ac_down = features.ac > features.prev_ac, features.ac < features.prev_ac
+        if features.sar < price and ao_up and ac_up:
+            self._entry_candle = features.candles[-1]
+            return _sig(self, features, Side.BUY, conviction)
+        elif features.sar > price and ao_down and ac_down:
+            self._entry_candle = features.candles[-1]
+            return _sig(self, features, Side.SELL, conviction)
+        return []
+
+    def custom_brackets(
+        self, side: Side, entry_price: float, symbol: str
+    ) -> tuple[float | None, float | None] | None:
+        if self.p("fixed_exit_enabled") <= 0 or self._entry_candle is None:
+            return None
+        candle = self._entry_candle
+        if side == Side.BUY:
+            sl_dist = entry_price - candle.low
+            if sl_dist <= 0:
+                return None
+            return candle.low, entry_price + sl_dist
+        sl_dist = candle.high - entry_price
+        if sl_dist <= 0:
+            return None
+        return candle.high, entry_price - sl_dist
+
+
+class CCIEMAFixedStrategy(Strategy):
+    """Faithful replica of the source app "Trading system CCI and EMA":
+    EMA(8) + EMA(28) + CCI(30) — M30+, all instruments. Same core entry as
+    `CCIEMAPSARStrategy` but no PSAR and a fixed-points exit instead of a
+    trailing stop / EMA-cross exit, so kept as a fully separate strategy.
+
+    Entry:
+      Buy:  EMA8 crosses EMA28 from bottom to top AND CCI(30) above 0.
+      Sell: EMA8 crosses EMA28 from top to bottom AND CCI(30) below 0.
+    Exit (custom_brackets, FX pairs only): SL is ASYMMETRIC by side (app's
+    own numbers) — 20pts for longs, 10pts for shorts; TP is a flat 50pts
+    either way.
+    """
+
+    name = "cci_ema_fixed"
+    family = "trend"
+    DEFAULTS = {"conviction_base": 0.5, "fixed_exit_enabled": 1.0,
+                "long_sl_points": 20.0, "short_sl_points": 10.0, "tp_points": 50.0}
+    BOUNDS = {"conviction_base": (0.3, 0.8)}
+
+    def generate(self, features: KrakenFeatureSet) -> list[Signal]:
+        if not isinstance(features, KrakenFeatureSet):
+            return []
+        conviction = self.p("conviction_base")
+        crossed_up = _crossed_up(features.prev_ema8, features.prev_ema28, features.ema8, features.ema28)
+        crossed_down = _crossed_down(features.prev_ema8, features.prev_ema28, features.ema8, features.ema28)
+        if crossed_up and features.cci30 > 0:
+            return _sig(self, features, Side.BUY, conviction)
+        elif crossed_down and features.cci30 < 0:
+            return _sig(self, features, Side.SELL, conviction)
+        return []
+
+    def custom_brackets(
+        self, side: Side, entry_price: float, symbol: str
+    ) -> tuple[float | None, float | None] | None:
+        if self.p("fixed_exit_enabled") <= 0:
+            return None
+        point = _fx_point_size(symbol)
+        if not point:
+            return None
+        tp_dist = self.p("tp_points") * point
+        if side == Side.BUY:
+            sl_dist = self.p("long_sl_points") * point
+            return entry_price - sl_dist, entry_price + tp_dist
+        sl_dist = self.p("short_sl_points") * point
+        return entry_price + sl_dist, entry_price - tp_dist
+
+
+class EMA100DualTFStrategy(Strategy):
+    """Faithful replica of the source app "100 EMA on two timeframes":
+    EMA(100) + EMA(5) — primary M15, confirmed on H1 via ``confirm_timeframe``.
+
+    Entry:
+      Buy:  on M15, EMA5 crosses EMA100 from bottom to top AND on H1,
+            EMA5 > EMA100.
+      Sell: on M15, EMA5 crosses EMA100 from top to bottom AND on H1,
+            EMA5 < EMA100.
+    Exit (custom_brackets, FX pairs only): SL 10pts; TP 30pts (the app's
+    own fixed numbers — its "or the previous price extremum" alternative
+    for SL isn't implemented, "10 points" is the concrete floor it gives).
+    """
+
+    name = "ema100_dual_tf"
+    family = "trend"
+    confirm_timeframe = "1h"
+    DEFAULTS = {"conviction_base": 0.5, "fixed_exit_enabled": 1.0,
+                "sl_points": 10.0, "tp_points": 30.0}
+    BOUNDS = {"conviction_base": (0.3, 0.8)}
+
+    def generate(self, features: KrakenFeatureSet) -> list[Signal]:
+        if not isinstance(features, KrakenFeatureSet):
+            return []
+        confirm = getattr(self, "_confirm_features", None)
+        if confirm is None:
+            return []
+        conviction = self.p("conviction_base")
+        crossed_up = _crossed_up(features.prev_ema5, features.prev_ema100, features.ema5, features.ema100)
+        crossed_down = _crossed_down(features.prev_ema5, features.prev_ema100, features.ema5, features.ema100)
+        if crossed_up and confirm.ema5 > confirm.ema100:
+            return _sig(self, features, Side.BUY, conviction)
+        elif crossed_down and confirm.ema5 < confirm.ema100:
+            return _sig(self, features, Side.SELL, conviction)
+        return []
+
+    def custom_brackets(
+        self, side: Side, entry_price: float, symbol: str
+    ) -> tuple[float | None, float | None] | None:
+        if self.p("fixed_exit_enabled") <= 0:
+            return None
+        point = _fx_point_size(symbol)
+        if not point:
+            return None
+        sl_dist = self.p("sl_points") * point
+        tp_dist = self.p("tp_points") * point
+        if side == Side.BUY:
+            return entry_price - sl_dist, entry_price + tp_dist
+        return entry_price + sl_dist, entry_price - tp_dist
+
+
+class IchimokuAwesomeStrategy(Strategy):
+    """Faithful replica of the source app "Strategy with the use of the
+    indicators Ichimoku and Awesome Oscillator" — H1+, all pairs.
+
+    Entry:
+      Buy:  candle closed above Senkou Span B AND AO green above 0.
+      Sell: candle closed below Senkou Span B AND AO red below 0.
+    Exit (custom_brackets, FX pairs only): SL 5pts beyond the nearest
+    confirmed swing low/high (`_fractal_low`/`_fractal_high`); TP at the
+    same distance (the app's "or the nearest resistance/support" alternative
+    isn't implemented — same-distance is its concrete fallback).
+    """
+
+    name = "ichimoku_awesome"
+    family = "trend"
+    DEFAULTS = {"conviction_base": 0.5, "fixed_exit_enabled": 1.0,
+                "swing_order": 3.0, "swing_buffer_points": 5.0}
+    BOUNDS = {"conviction_base": (0.3, 0.8)}
+
+    def generate(self, features: KrakenFeatureSet) -> list[Signal]:
+        if not isinstance(features, KrakenFeatureSet) or not features.candles:
+            return []
+        candle = features.candles[-1]
+        conviction = self.p("conviction_base")
+        ao_green = features.ao > 0 and features.ao > features.prev_ao
+        ao_red = features.ao < 0 and features.ao < features.prev_ao
+        self._candles = features.candles
+        if candle.close > features.senkou_b and ao_green:
+            return _sig(self, features, Side.BUY, conviction)
+        elif candle.close < features.senkou_b and ao_red:
+            return _sig(self, features, Side.SELL, conviction)
+        return []
+
+    def custom_brackets(
+        self, side: Side, entry_price: float, symbol: str
+    ) -> tuple[float | None, float | None] | None:
+        if self.p("fixed_exit_enabled") <= 0:
+            return None
+        point = _fx_point_size(symbol)
+        if not point:
+            return None
+        order = max(1, int(self.p("swing_order")))
+        buffer_dist = self.p("swing_buffer_points") * point
+        candles = getattr(self, "_candles", None) or []
+        if side == Side.BUY:
+            swing = _fractal_low(candles, order, 200)
+            if swing is None:
+                return None
+            sl = swing - buffer_dist
+            sl_dist = entry_price - sl
+            if sl_dist <= 0:
+                return None
+            return sl, entry_price + sl_dist
+        swing = _fractal_high(candles, order, 200)
+        if swing is None:
+            return None
+        sl = swing + buffer_dist
+        sl_dist = sl - entry_price
+        if sl_dist <= 0:
+            return None
+        return sl, entry_price - sl_dist
+
+
+class ScalpMACDStoch10PtStrategy(Strategy):
+    """Faithful replica of the source app 'Scalping system "10 points"':
+    MACD(13,26,9) + Stochastic(5,3,3) — M1.
+
+    Entry:
+      Buy:  MACD(13,26,9) histogram positive AND Stochastic (%K or %D)
+            has risen back above 20 after having been below it.
+      Sell: MACD(13,26,9) histogram negative AND Stochastic (%K or %D)
+            has fallen back below 80 after having been above it.
+    Exit (custom_brackets, FX pairs only): SL 1pt beyond the nearest
+    confirmed swing low/high; TP a flat 10pts (the app's own numbers).
+    """
+
+    name = "scalp_macd_stoch_10pt"
+    family = "meanrev"
+    DEFAULTS = {"conviction_base": 0.5, "fixed_exit_enabled": 1.0,
+                "swing_order": 2.0, "sl_buffer_points": 1.0, "tp_points": 10.0}
+    BOUNDS = {"conviction_base": (0.3, 0.8)}
+
+    def generate(self, features: KrakenFeatureSet) -> list[Signal]:
+        if not isinstance(features, KrakenFeatureSet) or not features.candles:
+            return []
+        conviction = self.p("conviction_base")
+        stoch_recovered = ((features.prev_stoch5_k < 20 and features.stoch5_k >= 20)
+                            or (features.prev_stoch5_d < 20 and features.stoch5_d >= 20))
+        stoch_fell = ((features.prev_stoch5_k > 80 and features.stoch5_k <= 80)
+                      or (features.prev_stoch5_d > 80 and features.stoch5_d <= 80))
+        self._candles = features.candles
+        if features.macd_hist_13_26 > 0 and stoch_recovered:
+            return _sig(self, features, Side.BUY, conviction)
+        elif features.macd_hist_13_26 < 0 and stoch_fell:
+            return _sig(self, features, Side.SELL, conviction)
+        return []
+
+    def custom_brackets(
+        self, side: Side, entry_price: float, symbol: str
+    ) -> tuple[float | None, float | None] | None:
+        if self.p("fixed_exit_enabled") <= 0:
+            return None
+        point = _fx_point_size(symbol)
+        if not point:
+            return None
+        order = max(1, int(self.p("swing_order")))
+        buffer_dist = self.p("sl_buffer_points") * point
+        tp_dist = self.p("tp_points") * point
+        candles = getattr(self, "_candles", None) or []
+        if side == Side.BUY:
+            swing = _fractal_low(candles, order, 200)
+            sl = (swing - buffer_dist) if swing is not None else (entry_price - tp_dist)
+            return sl, entry_price + tp_dist
+        swing = _fractal_high(candles, order, 200)
+        sl = (swing + buffer_dist) if swing is not None else (entry_price + tp_dist)
+        return sl, entry_price - tp_dist
+
+
+class EMA200AwesomeStrategy(Strategy):
+    """Faithful replica of the source app "Strategy with the use of EMA and
+    Awesome Oscillator" — H1+, all pairs.
+
+    Entry:
+      Buy:  price above EMA(200) AND AO green above 0.
+      Sell: price below EMA(200) AND AO red below 0.
+    Exit (custom_brackets, FX pairs only): SL 5pts beyond the nearest
+    confirmed swing low/high; TP at the same distance (1:1 — the app's own
+    default; "or at your own discretion" isn't implemented).
+    """
+
+    name = "ema200_awesome"
+    family = "trend"
+    DEFAULTS = {"conviction_base": 0.5, "fixed_exit_enabled": 1.0,
+                "swing_order": 3.0, "swing_buffer_points": 5.0}
+    BOUNDS = {"conviction_base": (0.3, 0.8)}
+
+    def generate(self, features: KrakenFeatureSet) -> list[Signal]:
+        if not isinstance(features, KrakenFeatureSet):
+            return []
+        price = features.last_price
+        conviction = self.p("conviction_base")
+        ao_green = features.ao > 0 and features.ao > features.prev_ao
+        ao_red = features.ao < 0 and features.ao < features.prev_ao
+        self._candles = features.candles
+        if price > features.ema200 and ao_green:
+            return _sig(self, features, Side.BUY, conviction)
+        elif price < features.ema200 and ao_red:
+            return _sig(self, features, Side.SELL, conviction)
+        return []
+
+    def custom_brackets(
+        self, side: Side, entry_price: float, symbol: str
+    ) -> tuple[float | None, float | None] | None:
+        if self.p("fixed_exit_enabled") <= 0:
+            return None
+        point = _fx_point_size(symbol)
+        if not point:
+            return None
+        order = max(1, int(self.p("swing_order")))
+        buffer_dist = self.p("swing_buffer_points") * point
+        candles = getattr(self, "_candles", None) or []
+        if side == Side.BUY:
+            swing = _fractal_low(candles, order, 200)
+            if swing is None:
+                return None
+            sl = swing - buffer_dist
+            sl_dist = entry_price - sl
+            if sl_dist <= 0:
+                return None
+            return sl, entry_price + sl_dist
+        swing = _fractal_high(candles, order, 200)
+        if swing is None:
+            return None
+        sl = swing + buffer_dist
+        sl_dist = sl - entry_price
+        if sl_dist <= 0:
+            return None
+        return sl, entry_price - sl_dist
+
+
+class BBWilliamsRSIRangingStrategy(Strategy):
+    """Approximate replica of the source app "The right moment": BB(20,2) +
+    Williams %R(25) + RSI(5) — M15/H1, designed for sideways/ranging markets.
+
+    The app's full description is a continuous, discretionary trade
+    management sequence (open near one band, ride through the middle band,
+    lock in profit near the opposite band, watch for the oscillators to
+    "stall") that doesn't reduce to a simple entry/exit rule pair. This
+    implementation keeps the concrete, unambiguous part — the entry trigger
+    — faithfully, and approximates the exit as a fixed BB-mid/band bracket
+    rather than the described continuous management.
+
+    Entry:
+      Buy:  RSI(5) crosses up through 30 AND Williams %R(25) crosses up
+            through -80 AND price at/below the lower BB(20,2) band.
+      Sell: RSI(5) crosses down through 70 AND Williams %R(25) crosses down
+            through -20 AND price at/above the upper BB(20,2) band.
+    Exit (custom_brackets): TP at the BB mid-line; SL just beyond the entry
+    band (lower band for longs, upper band for shorts).
+    """
+
+    name = "bb_williams_rsi_ranging"
+    family = "meanrev"
+    DEFAULTS = {"conviction_base": 0.5, "fixed_exit_enabled": 1.0, "sl_buffer_points": 3.0}
+    BOUNDS = {"conviction_base": (0.3, 0.8)}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._entry_bb_mid: float | None = None
+
+    def generate(self, features: KrakenFeatureSet) -> list[Signal]:
+        if not isinstance(features, KrakenFeatureSet):
+            return []
+        price = features.last_price
+        conviction = self.p("conviction_base")
+        rsi_up = features.prev_rsi5 <= 30.0 < features.rsi5
+        wr_up = features.prev_williams_r25 <= -80.0 < features.williams_r25
+        rsi_down = features.prev_rsi5 >= 70.0 > features.rsi5
+        wr_down = features.prev_williams_r25 >= -20.0 > features.williams_r25
+        if rsi_up and wr_up and price <= features.bb_lower:
+            self._entry_bb_mid = features.bb_mid
+            return _sig(self, features, Side.BUY, conviction)
+        elif rsi_down and wr_down and price >= features.bb_upper:
+            self._entry_bb_mid = features.bb_mid
+            return _sig(self, features, Side.SELL, conviction)
+        return []
+
+    def custom_brackets(
+        self, side: Side, entry_price: float, symbol: str
+    ) -> tuple[float | None, float | None] | None:
+        if self.p("fixed_exit_enabled") <= 0 or self._entry_bb_mid is None:
+            return None
+        point = _fx_point_size(symbol)
+        buffer_dist = self.p("sl_buffer_points") * point if point else 0.0
+        tp = self._entry_bb_mid
+        if side == Side.BUY:
+            return entry_price - buffer_dist, tp
+        return entry_price + buffer_dist, tp
+
+
+class TripleSMAStrategy(Strategy):
+    """Faithful replica of the source app "Strategy with the use of three
+    moving average lines": SMA(13), SMA(26), SMA(100) — H4.
+
+    Entry:
+      Buy:  SMA26 crosses SMA100 from bottom to top AND SMA13 is above both
+            SMA26 and SMA100.
+      Sell: SMA26 crosses SMA100 from top to bottom AND SMA13 is below both
+            SMA26 and SMA100.
+    Exit: outright close when SMA13 crosses back through SMA26 against the
+    position (``ema_cross_exit`` retargeted to sma13/sma26 via
+    ``ema_cross_exit_fast``/``ema_cross_exit_slow`` — the generic field-cross
+    exit mechanism works for any two named FeatureSet fields, not just EMAs).
+    """
+
+    name = "triple_sma"
+    family = "trend"
+    ema_cross_exit = True
+    ema_cross_exit_fast = "sma13"
+    ema_cross_exit_slow = "sma26"
+    DEFAULTS = {"conviction_base": 0.5}
+    BOUNDS = {"conviction_base": (0.3, 0.8)}
+
+    def generate(self, features: KrakenFeatureSet) -> list[Signal]:
+        if not isinstance(features, KrakenFeatureSet):
+            return []
+        conviction = self.p("conviction_base")
+        crossed_up = _crossed_up(features.prev_sma26, features.prev_sma100, features.sma26, features.sma100)
+        crossed_down = _crossed_down(features.prev_sma26, features.prev_sma100, features.sma26, features.sma100)
+        if crossed_up and features.sma13 > features.sma26 and features.sma13 > features.sma100:
+            return _sig(self, features, Side.BUY, conviction)
+        elif crossed_down and features.sma13 < features.sma26 and features.sma13 < features.sma100:
+            return _sig(self, features, Side.SELL, conviction)
+        return []
+
+
 # Registry of all 26 strategies
 KRAKEN_STRATEGIES = [
     CCIMACDStrategy,
@@ -1555,4 +2173,16 @@ KRAKEN_STRATEGIES = [
     FollowTheTrendD1Strategy,
     GoldmineXAUUSDStrategy,
     SpeculativeZigzagRSIStrategy,
+    ParSARAwesomeStrategy,
+    CCIEMAPSARStrategy,
+    EMAADXMACDContrarianStrategy,
+    MomentumForexStrategy,
+    PSARAOAcStrategy,
+    CCIEMAFixedStrategy,
+    EMA100DualTFStrategy,
+    IchimokuAwesomeStrategy,
+    ScalpMACDStoch10PtStrategy,
+    EMA200AwesomeStrategy,
+    BBWilliamsRSIRangingStrategy,
+    TripleSMAStrategy,
 ]

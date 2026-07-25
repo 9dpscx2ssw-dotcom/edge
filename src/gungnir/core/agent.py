@@ -961,9 +961,13 @@ class Agent:
                     strat_tf = getattr(strat_obj, "timeframe", self.tf)
                     cached = self._feat_cache.get((symbol, strat_tf))
                     feats = cached[1] if cached else None
-                    flipped = feats is not None and (
-                        (pos.side == Side.BUY and feats.ema10 < feats.ema21) or
-                        (pos.side == Side.SELL and feats.ema10 > feats.ema21))
+                    fast_field = getattr(strat_obj, "ema_cross_exit_fast", "ema10")
+                    slow_field = getattr(strat_obj, "ema_cross_exit_slow", "ema21")
+                    fast_val = getattr(feats, fast_field, None) if feats else None
+                    slow_val = getattr(feats, slow_field, None) if feats else None
+                    flipped = fast_val is not None and slow_val is not None and (
+                        (pos.side == Side.BUY and fast_val < slow_val) or
+                        (pos.side == Side.SELL and fast_val > slow_val))
                     if flipped:
                         log.debug("EMA-cross exit for %s/%s: ema10/ema21 flipped against %s",
                                   symbol, pos.strategy, pos.side.value)
@@ -1006,6 +1010,25 @@ class Agent:
                                   symbol, pos.strategy, feats.stoch_k, pos.side.value)
                         await self._close(broker, symbol, self._last_view.get(symbol, {}),
                                           pos.strategy, reason="stoch-exhaustion-exit")
+                        continue
+                # Strategy-specific RSI-exhaustion exit (e.g. momentum_forex:
+                # "Buy transaction shall be closed when RSI enters the
+                # overbought zone. Sell transaction shall be closed when the
+                # indicator enters the oversold zone."). Opt-in via
+                # `rsi_exhaustion_exit`; thresholds read from the strategy's
+                # own params (`rsi_exit_upper` / `rsi_exit_lower`).
+                if strat_obj is not None and getattr(strat_obj, "rsi_exhaustion_exit", False):
+                    strat_tf = getattr(strat_obj, "timeframe", self.tf)
+                    cached = self._feat_cache.get((symbol, strat_tf))
+                    feats = cached[1] if cached else None
+                    exhausted = feats is not None and (
+                        (pos.side == Side.BUY and feats.rsi > strat_obj.p("rsi_exit_upper")) or
+                        (pos.side == Side.SELL and feats.rsi < strat_obj.p("rsi_exit_lower")))
+                    if exhausted:
+                        log.debug("RSI-exhaustion exit for %s/%s: rsi=%.1f against %s",
+                                  symbol, pos.strategy, feats.rsi, pos.side.value)
+                        await self._close(broker, symbol, self._last_view.get(symbol, {}),
+                                          pos.strategy, reason="rsi-exhaustion-exit")
                         continue
                 if pos.side == Side.BUY:
                     hit = (stop and price <= stop) or (tp and price >= tp)
