@@ -63,9 +63,20 @@ strategies:
     mode: shadow
     timeframe: 15m
     symbols: []
-    params:
-      period_bb: 20
-      period_rsi: 11
+    # BB period (20) and RSI period (11) are both fixed, globally-computed
+    # features (KrakenFeatureSet.bb_* / rsi11) — not per-strategy params, so
+    # nothing belongs here (the old period_rsi: 11 key was dead: the code
+    # read the shared RSI(14) field regardless of what this said).
+    params: {}
+
+  # Source app's second listed timeframe (M15, M30) — its own exit-table row
+  # (bb_rsi_m30 in _BBRSIBase._TP_POINTS). Shadow-eligible from the
+  # dashboard once it has its own track record; starts off.
+  - name: bb_rsi_m30
+    mode: "off"
+    timeframe: 30m
+    symbols: []
+    params: {}
 
   - name: macd_stoch             # MACD + stochastic momentum
     mode: shadow

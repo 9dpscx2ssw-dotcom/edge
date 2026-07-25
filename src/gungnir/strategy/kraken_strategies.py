@@ -720,26 +720,79 @@ class AwesomeOscillatorStrategy(Strategy):
         return []
 
 
-class BBRSIStrategy(Strategy):
-    """S10: Bollinger Bands(20,2) + RSI(11) — M15."""
+class _BBRSIBase(Strategy):
+    """Source app "Bollinger Bands and RSI": BB(20,2) + RSI(11) breakout-
+    continuation, shared across the app's two listed timeframes (bb_rsi/M15,
+    bb_rsi_m30/M30 below) — same pattern as `_HMADonchianBase`.
 
-    name = "bb_rsi"
+    Entry was already faithful before this pass (RSI > 70 with price above
+    the upper band for longs, mirror for shorts — a momentum-continuation
+    rule despite the classic-looking 70/30 zones, not mean-reversion). Two
+    real gaps fixed here:
+
+    * RSI period: every strategy in this codebase previously shared one
+      globally-computed RSI(14) (`features.rsi`); the app calls for RSI(11)
+      specifically. `features.rsi11` is now computed alongside it.
+    * Exit: the app specifies a fixed-points TP table keyed by (timeframe,
+      instrument) — 15/19 pts on M15 for EURUSD/GBPUSD, 19/25 pts on M30 —
+      plus a flat 10-point SL, nothing like the generic ATR bracket every
+      strategy defaults to. Implemented via `custom_brackets`, scoped to
+      exactly the instruments the app names; anything else (or a symbol/
+      timeframe combination outside the table) falls back to the generic
+      ATR bracket rather than guessing a number the app never specified.
+    """
+
     family = "meanrev"
-    DEFAULTS = {"rsi_overbought": 70.0, "rsi_oversold": 30.0, "conviction_base": 0.5}
+    DEFAULTS = {"rsi_overbought": 70.0, "rsi_oversold": 30.0, "conviction_base": 0.5,
+                "sl_points": 10.0, "fixed_exit_enabled": 1.0}
     BOUNDS = {"rsi_overbought": (60.0, 90.0), "rsi_oversold": (10.0, 40.0),
               "conviction_base": (0.3, 0.8)}
+
+    # App's fixed-points TP table: (timeframe, symbol) -> TP distance in points.
+    _TP_POINTS = {
+        ("15m", "EURUSD"): 15.0, ("15m", "GBPUSD"): 19.0,
+        ("30m", "EURUSD"): 19.0, ("30m", "GBPUSD"): 25.0,
+    }
 
     def generate(self, features: KrakenFeatureSet) -> list[Signal]:
         if not isinstance(features, KrakenFeatureSet):
             return []
         price = features.last_price
-        rsi = features.rsi
+        rsi = features.rsi11
         conviction = self.p("conviction_base")
         if rsi > self.p("rsi_overbought") and price > features.bb_upper:
             return _sig(self, features, Side.BUY, conviction)
         elif rsi < self.p("rsi_oversold") and price < features.bb_lower:
             return _sig(self, features, Side.SELL, conviction)
         return []
+
+    def custom_brackets(
+        self, side: Side, entry_price: float, symbol: str
+    ) -> tuple[float | None, float | None] | None:
+        if self.p("fixed_exit_enabled") <= 0:
+            return None
+        point = _fx_point_size(symbol)
+        if not point:
+            return None
+        tp_pts = self._TP_POINTS.get((self.timeframe, symbol))
+        if tp_pts is None:
+            return None   # outside the app's named table -> generic ATR bracket
+        sl_dist = self.p("sl_points") * point
+        tp_dist = tp_pts * point
+        if side == Side.BUY:
+            return entry_price - sl_dist, entry_price + tp_dist
+        return entry_price + sl_dist, entry_price - tp_dist
+
+
+class BBRSIStrategy(_BBRSIBase):
+    """S10: Bollinger Bands(20,2) + RSI(11) — M15."""
+    name = "bb_rsi"
+
+
+class BBRSIM30Strategy(_BBRSIBase):
+    """S10-M30: Bollinger Bands(20,2) + RSI(11) — M30 (source app's second
+    listed timeframe; same rule, its own exit-table row)."""
+    name = "bb_rsi_m30"
 
 
 class IntelligentTradingStrategy(Strategy):
@@ -978,6 +1031,7 @@ KRAKEN_STRATEGIES = [
     BBRSICuttingStrategy,
     AwesomeOscillatorStrategy,
     BBRSIStrategy,
+    BBRSIM30Strategy,
     IntelligentTradingStrategy,
     MultiBBStrategy,
     MACDStochStrategy,
