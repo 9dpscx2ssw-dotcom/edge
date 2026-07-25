@@ -154,13 +154,25 @@ strategies:
     params:
       period_cci: 14
 
-  - name: parsar_cci_ema
+  # Source app's "Scalping with Parabolic SAR + CCI": rebuilt as two
+  # independent per-timeframe strategies (its own indicator list assigns
+  # EMA50 to M1, EMA21 to M5) rather than one M1-primary strategy with an M5
+  # confirmation fetch. Both m1/m5: filters.timeframe (min_timeframe_minutes:
+  # 10 in config.yaml) vetoes their signals whenever enabled — the repo's
+  # existing M1/M5 cost-floor policy, not worked around here.
+  - name: parsar_cci_ema_m1
     mode: "off"
-    timeframe: 15m
+    timeframe: 1m
     symbols: []
     params:
       period_cci: 45
-      period_ema: 50
+
+  - name: parsar_cci_ema_m5
+    mode: "off"
+    timeframe: 5m
+    symbols: []
+    params:
+      period_cci: 45
 
   - name: bb_macd_sma
     mode: "off"

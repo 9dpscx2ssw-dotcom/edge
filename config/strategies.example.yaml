@@ -99,13 +99,19 @@ strategies:
     params:
       period_cci: 14
 
-  - name: parsar_cci_ema
+  - name: parsar_cci_ema_m1
     mode: "off"
-    timeframe: 15m
+    timeframe: 1m
     symbols: []
     params:
       period_cci: 45
-      period_ema: 50
+
+  - name: parsar_cci_ema_m5
+    mode: "off"
+    timeframe: 5m
+    symbols: []
+    params:
+      period_cci: 45
 
   - name: bb_macd_sma
     mode: "off"

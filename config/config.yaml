@@ -488,9 +488,12 @@ filters:
   # and the hma_dc family (identical logic, TF the only difference) isolates it:
   # m1/m5/m15 lose with 25-37% near-stop, h1/h4 win with 0% near-stop. min=10
   # drops ONLY m1/m5 uniformly (no positive-core strategy is sub-10m); it does
-  # NOT raise to 16-20 because several positive-core strategies (bb_rsi, cci_macd,
-  # parsar_cci_ema, ema921_adx_dmi_m15) run on 15m — that cut must stay per-
-  # strategy, not a blanket floor. Toggle in the dashboard Settings tab.
+  # NOT raise to 16-20 because several positive-core strategies (bb_rsi,
+  # cci_macd, ema921_adx_dmi_m15) run on 15m — that cut must stay per-
+  # strategy, not a blanket floor. (parsar_cci_ema formerly ran here too;
+  # 25 Jul rebuilt as parsar_cci_ema_m1/m5 at their native sub-10m
+  # timeframes, so this filter now vetoes them whenever enabled — expected,
+  # not a regression.) Toggle in the dashboard Settings tab.
   timeframe: true
   min_timeframe_minutes: 10
 

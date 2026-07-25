@@ -90,7 +90,7 @@ def test_trailing_guards_degenerate_inputs():
     assert _trailing_stop(Side.BUY, 110.0, 100.0, 2.0, 0.0) is None  # mult off
 
 
-# ── EMA-line trailing stop (parsar_cci_ema: "SL at the EMA level") ────────────
+# ── EMA-line trailing stop (parsar_cci_ema_m1/m5: "SL at the EMA level") ──────
 
 def test_ema_trail_long_follows_ema_up():
     # long, stop 98, EMA now at 99 (above old stop) → ratchets up to 99.

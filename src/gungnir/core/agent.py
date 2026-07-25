@@ -910,7 +910,7 @@ class Agent:
                             pos.context["stop"] = stop = new_stop
                             log.debug("Trail %s/%s: stop -> %.5f (peak=%.5f atr=%.5f)",
                                       symbol, pos.strategy, new_stop, peak, atr)
-                # Strategy-specific EMA-line trailing stop (e.g. parsar_cci_ema:
+                # Strategy-specific EMA-line trailing stop (e.g. parsar_cci_ema_m1:
                 # "Stop Loss level should be placed at the EMA level"). Opt-in
                 # per strategy via `trail_ema_period`; reads the same per-(symbol,
                 # timeframe) feature cache the signal loop populates, so no
@@ -1683,8 +1683,11 @@ class Agent:
         for strat in active_strats:
             tf = getattr(strat, "timeframe", self.tf)
             timeframes.add(tf)
-            # Higher-timeframe confluence (e.g. parsar_cci_ema's M5/EMA21
-            # filter): fetch that timeframe too so it's available below.
+            # Higher-timeframe confluence: a strategy that sets
+            # `confirm_timeframe` gets that timeframe fetched too, available
+            # below as `_confirm_features`. Generic infrastructure — no
+            # strategy currently opts in (parsar_cci_ema was rebuilt into
+            # separate per-timeframe strategies instead of using this).
             confirm_tf = getattr(strat, "confirm_timeframe", "")
             if confirm_tf and strat.p("mtf_confirm_enabled") > 0:
                 timeframes.add(confirm_tf)
