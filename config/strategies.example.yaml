@@ -277,3 +277,9 @@ strategies:
     timeframe: 1d
     symbols: [GOLD]
     params: {}
+
+  - name: speculative_zigzag_rsi
+    mode: "off"
+    timeframe: 15m
+    symbols: [EURUSD, GBPUSD]
+    params: {}

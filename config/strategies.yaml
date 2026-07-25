@@ -370,3 +370,11 @@ strategies:
     timeframe: 1d
     symbols: [GOLD]
     params: {}
+
+  # Source app "Speculative": ZigZag(Depth=100)-as-fractal-swing + RSI(14),
+  # scoped to the app's own instrument pair.
+  - name: speculative_zigzag_rsi
+    mode: "off"
+    timeframe: 15m
+    symbols: [EURUSD, GBPUSD]
+    params: {}

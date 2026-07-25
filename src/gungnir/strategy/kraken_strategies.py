@@ -679,28 +679,99 @@ class ADXMomentumStrategy(Strategy):
 
 
 class BBRSICuttingStrategy(Strategy):
-    """S8: BB(20,2) + ADX(14) + RSI(7) — M5."""
+    """S8: BB(20,2) + ADX(14) + RSI(7) — M5.
+
+    Overwritten in place to match the source app "Cutting Points" — never
+    faithful to begin with (mode: off, no prior track record), so no earlier
+    empirical rationale to protect by keeping a separate variant. Two real
+    gaps fixed:
+
+    * RSI period: used the shared, globally-computed RSI(14) (`features.rsi`)
+      instead of a genuine RSI(7) (`features.rsi7`).
+    * Entry was a single-bar level check (price at the band + RSI/ADX zone,
+      fires immediately). The app is a two-phase setup: price reaching the
+      band with RSI/ADX confirmed only ARMS it; the actual entry fires when
+      price then RETURNS back inside the band. Firing on the raw band touch
+      risks entering while the move is still extending; the app's design
+      waits for the bounce to actually start.
+
+    Entry:
+      Buy:  armed when price <= lower band, RSI(7) < 30, ADX(14) < 30 (all
+            three, any bar); triggers on a later bar when price closes back
+            above the lower band while still armed.
+      Sell: mirror — armed at the upper band with RSI(7) > 70, ADX < 30;
+            triggers when price closes back below the upper band.
+    Exit (custom_brackets): TP at the BB mid-line by default, or a fixed
+    3-5 point "quick" target (`quick_tp_enabled`) — the app offers both, mid-
+    line target is the primary/default. SL is 3 points (`sl_buffer_points`)
+    beyond the band value at the moment the setup armed, FX pairs only.
+    """
 
     name = "bb_rsi_cutting"
     family = "meanrev"
-    DEFAULTS = {"rsi_oversold": 30.0, "rsi_overbought": 70.0, "adx_max": 30.0,
-                "conviction_base": 0.5}
+    DEFAULTS = {
+        "rsi_oversold": 30.0, "rsi_overbought": 70.0, "adx_max": 30.0,
+        "conviction_base": 0.5,
+        "sl_buffer_points": 3.0,      # app: 3 points beyond the band
+        "quick_tp_enabled": 0.0,      # 0 -> TP at BB mid (default); 1 -> fixed quick_tp_points
+        "quick_tp_points": 4.0,       # app: 3-5 points
+        "fixed_exit_enabled": 1.0,
+    }
     BOUNDS = {"rsi_oversold": (10.0, 40.0), "rsi_overbought": (60.0, 90.0),
               "adx_max": (20.0, 50.0), "conviction_base": (0.3, 0.8)}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._pending: dict[str, str] = {}   # symbol -> "buy" | "sell", armed
+        self._entry_band: float | None = None
+        self._entry_mid: float | None = None
 
     def generate(self, features: KrakenFeatureSet) -> list[Signal]:
         if not isinstance(features, KrakenFeatureSet):
             return []
         price = features.last_price
-        rsi = features.rsi
+        rsi = features.rsi7
+        adx = features.adx
         conviction = self.p("conviction_base")
-        if features.adx >= self.p("adx_max"):
-            return []
-        if price <= features.bb_lower and rsi < self.p("rsi_oversold"):
+        symbol = features.symbol
+        adx_ok = adx < self.p("adx_max")
+
+        pending = self._pending.get(symbol)
+        if price <= features.bb_lower and rsi < self.p("rsi_oversold") and adx_ok:
+            pending = "buy"
+        elif price >= features.bb_upper and rsi > self.p("rsi_overbought") and adx_ok:
+            pending = "sell"
+        self._pending[symbol] = pending
+
+        if pending == "buy" and price > features.bb_lower:
+            self._pending[symbol] = None
+            self._entry_band, self._entry_mid = features.bb_lower, features.bb_mid
             return _sig(self, features, Side.BUY, conviction)
-        elif price >= features.bb_upper and rsi > self.p("rsi_overbought"):
+        if pending == "sell" and price < features.bb_upper:
+            self._pending[symbol] = None
+            self._entry_band, self._entry_mid = features.bb_upper, features.bb_mid
             return _sig(self, features, Side.SELL, conviction)
         return []
+
+    def custom_brackets(
+        self, side: Side, entry_price: float, symbol: str
+    ) -> tuple[float | None, float | None] | None:
+        if self.p("fixed_exit_enabled") <= 0:
+            return None
+        point = _fx_point_size(symbol)
+        if not point:
+            return None
+        stop = None
+        if self._entry_band is not None:
+            buffer_dist = self.p("sl_buffer_points") * point
+            stop = (self._entry_band - buffer_dist if side == Side.BUY
+                    else self._entry_band + buffer_dist)
+        if self.p("quick_tp_enabled") > 0:
+            tp_dist = self.p("quick_tp_points") * point
+            tp = entry_price + tp_dist if side == Side.BUY else entry_price - tp_dist
+        else:
+            tp = self._entry_mid
+        return stop, tp
 
 
 class AwesomeOscillatorStrategy(Strategy):
@@ -1349,6 +1420,99 @@ class GoldmineXAUUSDStrategy(Strategy):
         return entry_price + sl_dist, tp
 
 
+class SpeculativeZigzagRSIStrategy(Strategy):
+    """Faithful replica of the source app "Speculative" strategy: ZigZag
+    (Depth=100) + RSI(14) — M15, EURUSD/GBPUSD.
+
+    ZigZag itself isn't ported literally — a real ZigZag also filters by
+    percentage Deviation and Backstep, neither of which the app changes from
+    default, so "Depth=100" is really just "a confirmed swing point with a
+    100-bar minimum separation." That's exactly what `_fractal_high`/
+    `_fractal_low` (built for ema_stoch_rsi's swing stop) already detect —
+    reused here with `order=depth` so a "ZigZag point" means a confirmed
+    fractal extreme, not a literal MT4 ZigZag re-implementation.
+
+    Entry:
+      Sell: a ZigZag HIGH is confirmed on this exact bar AND RSI(14) > 70.
+      Buy:  a ZigZag LOW is confirmed on this exact bar AND RSI(14) < 30.
+    Exit (custom_brackets, FX pairs only): TP 60-100 points (`tp_points`,
+    default 80); SL 15-20 points (`sl_points`, default 17.5).
+
+    Directional lockout ("in case of S/L, we shall not open positions in
+    this direction but wait for the opposite signal"): `on_position_closed`
+    remembers a stop-out's side per symbol; same-direction signals are
+    suppressed until a genuine opposite-direction signal fires, which also
+    clears the block.
+    """
+
+    name = "speculative_zigzag_rsi"
+    family = "meanrev"
+    DEFAULTS = {
+        "conviction_base": 0.5,
+        "zigzag_depth": 100.0,
+        "rsi_oversold": 30.0,
+        "rsi_overbought": 70.0,
+        "tp_points": 80.0,     # app: 60-100 points
+        "sl_points": 17.5,     # app: 15-20 points
+        "fixed_exit_enabled": 1.0,
+    }
+    BOUNDS = {"conviction_base": (0.3, 0.8), "tp_points": (60.0, 100.0),
+              "sl_points": (15.0, 20.0)}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._blocked_side: dict[str, Side] = {}
+
+    def on_position_closed(self, symbol: str, side: Side, reason: str) -> None:
+        if reason in ("stop-loss", "breakeven-stop"):
+            self._blocked_side[symbol] = side
+
+    def generate(self, features: KrakenFeatureSet) -> list[Signal]:
+        if not isinstance(features, KrakenFeatureSet) or not features.candles:
+            return []
+        order = max(1, int(self.p("zigzag_depth")))
+        window = 2 * order + 1
+        candles = features.candles
+        if len(candles) < window:
+            return []
+        # Restricting the lookback to exactly `window` candles makes
+        # _fractal_high/_low check ONLY the single middle bar — i.e. "was a
+        # swing point confirmed on exactly this bar," not "somewhere recently."
+        recent = candles[-window:]
+        pivot_high = _fractal_high(recent, order, window)
+        pivot_low = _fractal_low(recent, order, window)
+        rsi = features.rsi
+        conviction = self.p("conviction_base")
+        symbol = features.symbol
+        blocked = self._blocked_side.get(symbol)
+
+        if pivot_high is not None and rsi > self.p("rsi_overbought"):
+            if blocked == Side.SELL:
+                return []
+            self._blocked_side.pop(symbol, None)
+            return _sig(self, features, Side.SELL, conviction)
+        elif pivot_low is not None and rsi < self.p("rsi_oversold"):
+            if blocked == Side.BUY:
+                return []
+            self._blocked_side.pop(symbol, None)
+            return _sig(self, features, Side.BUY, conviction)
+        return []
+
+    def custom_brackets(
+        self, side: Side, entry_price: float, symbol: str
+    ) -> tuple[float | None, float | None] | None:
+        if self.p("fixed_exit_enabled") <= 0:
+            return None
+        point = _fx_point_size(symbol)
+        if not point:
+            return None
+        tp_dist = self.p("tp_points") * point
+        sl_dist = self.p("sl_points") * point
+        if side == Side.BUY:
+            return entry_price - sl_dist, entry_price + tp_dist
+        return entry_price + sl_dist, entry_price - tp_dist
+
+
 # Registry of all 26 strategies
 KRAKEN_STRATEGIES = [
     CCIMACDStrategy,
@@ -1390,4 +1554,5 @@ KRAKEN_STRATEGIES = [
     FollowTheTrendH4Strategy,
     FollowTheTrendD1Strategy,
     GoldmineXAUUSDStrategy,
+    SpeculativeZigzagRSIStrategy,
 ]

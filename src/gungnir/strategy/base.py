@@ -136,3 +136,13 @@ class Strategy(ABC):
         both legs exactly as the generic bracket set them.
         """
         return None
+
+    def on_position_closed(self, symbol: str, side: Side, reason: str) -> None:
+        """Optional notification hook: called from Agent._manage_exits right
+        before a stop/take-profit-triggered close for THIS strategy's own
+        position, with the reason ("stop-loss" / "breakeven-stop" /
+        "take-profit"). Default no-op; a strategy whose source design reacts
+        to its own exits (e.g. "after a stop-loss, don't re-open in that
+        direction until the opposite signal") overrides this to track that
+        state itself — see SpeculativeZigzagRSIStrategy.
+        """

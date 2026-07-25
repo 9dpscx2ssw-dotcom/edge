@@ -167,7 +167,7 @@ def build_kraken_series(symbol: str, candles: list[Candle]) -> list["KrakenFeatu
         out.append(KrakenFeatureSet(
             symbol=symbol, last_price=last,
             ema_fast=_at(ema_fast_a, i, last), ema_slow=_at(ema_slow_a, i, last),
-            rsi=_at_rsi(closes, i), rsi11=_at_rsi(closes, i, 11),
+            rsi=_at_rsi(closes, i), rsi11=_at_rsi(closes, i, 11), rsi7=_at_rsi(closes, i, 7),
             atr=_at_atr(highs, lows, closes, i),
             bb_lower=_at(bb_l_a, i), bb_mid=_at(bb_m_a, i), bb_upper=_at(bb_u_a, i),
             bb3_lower=_at(bb3_l_a, i), bb3_upper=_at(bb3_u_a, i),
@@ -227,6 +227,7 @@ class KrakenFeatureSet(FeatureSet):
     """Extended FeatureSet with all 26 Kraken strategy indicators."""
 
     rsi11: float = 50.0   # RSI(11) — bb_rsi/bb_rsi_m30's own period, distinct from the shared RSI(14) above
+    rsi7: float = 50.0    # RSI(7) — bb_rsi_cutting's own period
 
     # Wider Bollinger deviations (bb_lower/bb_mid/bb_upper above are dev=2) —
     # multi_bb_app's three-band system.
@@ -465,6 +466,7 @@ def build_kraken(
         ema_slow=ema_slow,
         rsi=indicators.rsi(closes, 14),
         rsi11=indicators.rsi(closes, 11),
+        rsi7=indicators.rsi(closes, 7),
         atr=indicators.atr(highs, lows, closes, 14),
         bb_lower=bb_lower,
         bb_mid=bb_mid,

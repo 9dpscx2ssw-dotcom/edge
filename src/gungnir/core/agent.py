@@ -1020,6 +1020,8 @@ class Agent:
                               else "stop-loss" if is_stop else "take-profit")
                     log.debug("Exit triggered for %s: %s at %.5f (entry: %.5f, stop: %s, tp: %s)",
                              symbol, reason, price, pos.entry_price, stop, tp)
+                    if strat_obj is not None:
+                        strat_obj.on_position_closed(symbol, pos.side, reason)
                     await self._close(broker, symbol, self._last_view.get(symbol, {}),
                                       pos.strategy, reason=reason)
 
