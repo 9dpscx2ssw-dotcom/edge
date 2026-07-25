@@ -114,11 +114,12 @@ def build_kraken_series(symbol: str, candles: list[Candle]) -> list["KrakenFeatu
     momentum_zero_a[:14] = np.nan
     sma2_a, sma144_a = kraken_indicators.sma(closes, 2), kraken_indicators.sma(closes, 144)
     smma8_a, smma18_a = kraken_indicators.smma(closes, 8), kraken_indicators.smma(closes, 18)
+    smma2_a = kraken_indicators.smma(closes, 2)
     cci14_a = kraken_indicators.cci(highs, lows, closes, 14)
     cci45_a = kraken_indicators.cci(highs, lows, closes, 45)
     cci200_a = kraken_indicators.cci(highs, lows, closes, 200)
     ml12_a, sl12_a, hist12_a = kraken_indicators.macd(closes, 12, 26, 2)
-    ml11_a, _, _ = kraken_indicators.macd(closes, 11, 27, 4)
+    ml11_a, _, hist11_a = kraken_indicators.macd(closes, 11, 27, 4)
     ml13_a, _, _ = kraken_indicators.macd(closes, 13, 26, 9)
     ml5_a, _, _ = kraken_indicators.macd(closes, 5, 7, 4)
     sar_a, sar_trend_a = kraken_indicators.parabolic_sar(highs, lows)
@@ -162,7 +163,8 @@ def build_kraken_series(symbol: str, candles: list[Candle]) -> list["KrakenFeatu
             bb_lower=_at(bb_l_a, i), bb_mid=_at(bb_m_a, i), bb_upper=_at(bb_u_a, i),
             cci14=_at(cci14_a, i), cci45=_at(cci45_a, i), cci200=_at(cci200_a, i),
             macd12_26=_at(ml12_a, i), macd_signal=_at(sl12_a, i), macd_hist=_at(hist12_a, i),
-            macd_11_27=_at(ml11_a, i), macd_13_26=_at(ml13_a, i), macd_5_7=_at(ml5_a, i),
+            macd_11_27=_at(ml11_a, i), macd_hist_11_27=_at(hist11_a, i),
+            macd_13_26=_at(ml13_a, i), macd_5_7=_at(ml5_a, i),
             sar=_at(sar_a, i), sar_trend=_at(sar_trend_a, i, 1.0),
             stoch_k=_at(k_a, i, 50.0), stoch_d=_at(d_a, i, 50.0),
             ema5=_at(ema5_a, i, last),
@@ -175,6 +177,8 @@ def build_kraken_series(symbol: str, candles: list[Candle]) -> list["KrakenFeatu
             dmi_histogram=_at(pdi_a, i) - _at(mdi_a, i),
             sma2=_at(sma2_a, i, last), sma144=_at(sma144_a, i, last),
             smma8=_at(smma8_a, i, last), smma18=_at(smma18_a, i, last),
+            smma2=_at(smma2_a, i, last), prev_smma2=_at(smma2_a, i - 1, last),
+            prev_bb_mid=_at(bb_m_a, i - 1, last),
             adx=_at(adx_a, i), plus_di=_at(pdi_a, i), minus_di=_at(mdi_a, i),
             momentum=_at(mom_a, i, 100.0), ao=_at(ao_a, i),
             hma55=_at(hma55_a, i), dc_upper=_at(dc_u_a, i), dc_lower=_at(dc_l_a, i),
@@ -214,6 +218,7 @@ class KrakenFeatureSet(FeatureSet):
     macd_signal: float = 0.0
     macd_hist: float = 0.0
     macd_11_27: float = 0.0
+    macd_hist_11_27: float = 0.0  # histogram (line - signal) for the (11,27,4) config
     macd_13_26: float = 0.0
     macd_5_7: float = 0.0
 
@@ -244,6 +249,9 @@ class KrakenFeatureSet(FeatureSet):
     sma144: float = 0.0
     smma8: float = 0.0
     smma18: float = 0.0
+    smma2: float = 0.0        # MT4-style Smoothed MA, period 2 (bb_macd_sma_app entry)
+    prev_smma2: float = 0.0
+    prev_bb_mid: float = 0.0  # prior-bar BB mid, for MA/mid crossover detection
 
     # Advanced indicators
     adx: float = 0.0
@@ -322,6 +330,8 @@ def build_kraken(
     ema_fast = float(indicators.ema(closes, 20)[-1])
     ema_slow = float(indicators.ema(closes, 50)[-1])
     bb_lower, bb_mid, bb_upper = indicators.bollinger(closes, 20, 2.0)  # Returns tuple of 3 floats
+    prev_bb_mid = (indicators.bollinger(closes[:-1], 20, 2.0)[1]
+                   if len(closes) > 1 else bb_mid)
 
     # CCI
     cci14_arr = kraken_indicators.cci(highs, lows, closes, 14)
@@ -361,6 +371,9 @@ def build_kraken(
     sma144 = float(kraken_indicators.sma(closes, 144)[-1])
     smma8 = float(kraken_indicators.smma(closes, 8)[-1])
     smma18 = float(kraken_indicators.smma(closes, 18)[-1])
+    smma2_arr = kraken_indicators.smma(closes, 2)
+    smma2 = float(smma2_arr[-1])
+    prev_smma2 = float(smma2_arr[-2]) if len(smma2_arr) > 1 else smma2
 
     # ADX
     adx_arr, pdi, mdi = kraken_indicators.adx(highs, lows, closes, 14)
@@ -412,6 +425,7 @@ def build_kraken(
         macd_signal=float(sl12[-1]) if len(sl12) else 0.0,
         macd_hist=float(hist12[-1]) if len(hist12) else 0.0,
         macd_11_27=float(ml11[-1]) if len(ml11) else 0.0,
+        macd_hist_11_27=float(hist11[-1]) if len(hist11) else 0.0,
         macd_13_26=float(ml13[-1]) if len(ml13) else 0.0,
         macd_5_7=float(ml5[-1]) if len(ml5) else 0.0,
         # SAR
@@ -438,6 +452,9 @@ def build_kraken(
         sma144=sma144,
         smma8=smma8,
         smma18=smma18,
+        smma2=smma2,
+        prev_smma2=prev_smma2,
+        prev_bb_mid=float(prev_bb_mid),
         # ADX
         adx=float(adx_arr[-1]) if len(adx_arr) else 0.0,
         plus_di=float(pdi[-1]) if len(pdi) else 0.0,

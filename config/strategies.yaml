@@ -146,6 +146,18 @@ strategies:
       period_bb: 20
       std_dev: 2.0
 
+  # Faithful replica of the source app's BB+MACD+MA spec (contrarian MACD
+  # condition) — bb_macd_sma above intentionally diverges from this after the
+  # literal version scored a 1.8% win rate live (audit F-16). Shadow-only
+  # until this variant has its own track record.
+  - name: bb_macd_sma_app
+    mode: "off"
+    timeframe: 15m
+    symbols: []
+    params:
+      period_bb: 20
+      std_dev: 2.0
+
   - name: cci200_ema_pivot
     mode: "off"
     timeframe: 15m

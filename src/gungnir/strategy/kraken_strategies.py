@@ -225,6 +225,85 @@ class BBMACDStrategy(Strategy):
         return []
 
 
+class BBMACDSMAppStrategy(Strategy):
+    """S3-app: faithful replica of the source "BB, MACD, MA" app strategy — M15.
+
+    Kept as a SEPARATE strategy from `bb_macd_sma` rather than restoring the
+    original logic there: that strategy's MACD condition was deliberately
+    inverted from this app spec after the literal version scored a 1.8% win
+    rate over 228 live trades (audit F-16, see BBMACDStrategy's docstring).
+    This variant exists to let the *unmodified* app rule be shadow-vetted on
+    its own, without regressing the fix already proven live.
+
+    Entry (contrarian reversal, per the app spec):
+      Buy:  SMMA(2) crosses UP through the BB(20,2) mid-line while the
+            MACD(11,27,4) histogram is still BELOW zero (momentum lagging).
+      Sell: SMMA(2) crosses DOWN through the mid-line while the histogram is
+            still ABOVE zero.
+
+    Freshness: the crossover "confirms" the setup but the histogram condition
+    may lag it by one bar (the two rarely land on the exact same close) — an
+    open is allowed on the crossover bar or the bar immediately after it, not
+    later. `FRESH_BARS` bars beyond the cross, the pending setup expires; it
+    also expires immediately if price recrosses back over the mid-line before
+    the histogram condition is met.
+    """
+
+    name = "bb_macd_sma_app"
+    family = "meanrev"
+    FRESH_BARS = 1   # allow entry on the cross bar (0) or the next bar (1)
+    DEFAULTS = {"conviction_base": 0.5}
+    BOUNDS = {"conviction_base": (0.3, 0.8)}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Per-symbol pending crossover, e.g. {"EURUSD": {"side": Side.BUY, "bars": 0}}.
+        # Cleared once consumed (a signal fires), once it goes stale past
+        # FRESH_BARS, or if price recrosses the mid-line before confirming.
+        self._pending: dict[str, dict] = {}
+
+    def generate(self, features: KrakenFeatureSet) -> list[Signal]:
+        if not isinstance(features, KrakenFeatureSet):
+            return []
+        symbol = features.symbol
+        base = self.p("conviction_base")
+
+        crossed_up = _crossed_up(features.prev_smma2, features.prev_bb_mid,
+                                 features.smma2, features.bb_mid)
+        crossed_down = _crossed_down(features.prev_smma2, features.prev_bb_mid,
+                                     features.smma2, features.bb_mid)
+
+        pending = self._pending.get(symbol)
+        if crossed_up:
+            pending = {"side": Side.BUY, "bars": 0}
+        elif crossed_down:
+            pending = {"side": Side.SELL, "bars": 0}
+        elif pending is not None:
+            pending["bars"] += 1
+            still_on_side = (
+                (pending["side"] == Side.BUY and features.smma2 >= features.bb_mid) or
+                (pending["side"] == Side.SELL and features.smma2 <= features.bb_mid))
+            if pending["bars"] > self.FRESH_BARS or not still_on_side:
+                pending = None   # window expired, or price recrossed — stale
+
+        self._pending[symbol] = pending
+        if pending is None:
+            return []
+
+        hist = features.macd_hist_11_27
+        half = max(features.bb_upper - features.bb_mid, 1e-9)
+        depth = min(abs(features.last_price - features.bb_mid) / half, 1.0)
+        conviction = base + 0.3 * depth
+
+        if pending["side"] == Side.BUY and hist < 0:
+            self._pending[symbol] = None   # one trade per confirmed cross
+            return _sig(self, features, Side.BUY, conviction)
+        if pending["side"] == Side.SELL and hist > 0:
+            self._pending[symbol] = None
+            return _sig(self, features, Side.SELL, conviction)
+        return []
+
+
 class CCI200EMAStrategy(Strategy):
     """S4: CCI(200) + EMA(10,21,50) + Pivot Points — M5."""
 
@@ -617,6 +696,7 @@ KRAKEN_STRATEGIES = [
     CCIMACDStrategy,
     ParSARCCIStrategy,
     BBMACDStrategy,
+    BBMACDSMAppStrategy,
     CCI200EMAStrategy,
     EMAStochRSIStrategy,
     CCIReversalStrategy,
