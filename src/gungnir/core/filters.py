@@ -18,7 +18,7 @@ _CATEGORIES = {
 # names missing (trend + oscillator), so a third of the book was ungated even
 # with regime enforce ON. `test_every_strategy_has_a_family` guards regressions.
 STRATEGY_FAMILIES = {
-    "mean_reversion": "mean_reversion", "cci_reversal": "mean_reversion", "bb_rsi": "mean_reversion", "bb_rsi_m30": "mean_reversion", "multi_bb": "mean_reversion", "bb_macd_sma": "mean_reversion", "bb_macd_sma_app": "mean_reversion", "bb_rsi_cutting": "mean_reversion",
+    "mean_reversion": "mean_reversion", "cci_reversal": "mean_reversion", "bb_rsi": "mean_reversion", "bb_rsi_m30": "mean_reversion", "multi_bb": "mean_reversion", "multi_bb_app": "mean_reversion", "bb_macd_sma": "mean_reversion", "bb_macd_sma_app": "mean_reversion", "bb_rsi_cutting": "mean_reversion",
     "parsar_cci_ema": "trend", "adx_momentum_ema": "trend", "alligator": "trend", "trend_following": "trend",
     # Previously-missing trend strategies (mapped 24 Jul): fresh EMA/CCI/ADX
     # crosses and pivots — subject to the trend × range_high/range_low avoid rule.

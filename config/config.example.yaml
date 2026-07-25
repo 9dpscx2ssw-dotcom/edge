@@ -39,6 +39,7 @@ universe:
   - {symbol: USDCHF, enabled: false}
   - {symbol: USDCAD, enabled: false}
   # ── FX crosses / EM ──
+  - {symbol: GBPJPY, enabled: false}   # multi_bb_app's source instrument
   - {symbol: EURJPY, enabled: false}
   - {symbol: EURGBP, enabled: false}
   - {symbol: EURAUD, enabled: false}

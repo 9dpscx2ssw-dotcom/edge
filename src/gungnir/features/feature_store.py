@@ -140,6 +140,10 @@ def build_kraken_series(symbol: str, candles: list[Candle]) -> list["KrakenFeatu
 
     # Bollinger bands per bar (rolling window, computed once as arrays).
     bb_u_a, bb_m_a, bb_l_a = kraken_indicators.bollinger(closes, 20, 2.0)
+    # Wider deviations (3, 4) for the multi-deviation-band strategies
+    # (multi_bb_app) — same period/mean, only the std multiplier differs.
+    bb3_u_a, _, bb3_l_a = kraken_indicators.bollinger(closes, 20, 3.0)
+    bb4_u_a, _, bb4_l_a = kraken_indicators.bollinger(closes, 20, 4.0)
 
     out: list[KrakenFeatureSet] = []
     for i in range(n):
@@ -162,6 +166,8 @@ def build_kraken_series(symbol: str, candles: list[Candle]) -> list["KrakenFeatu
             rsi=_at_rsi(closes, i), rsi11=_at_rsi(closes, i, 11),
             atr=_at_atr(highs, lows, closes, i),
             bb_lower=_at(bb_l_a, i), bb_mid=_at(bb_m_a, i), bb_upper=_at(bb_u_a, i),
+            bb3_lower=_at(bb3_l_a, i), bb3_upper=_at(bb3_u_a, i),
+            bb4_lower=_at(bb4_l_a, i), bb4_upper=_at(bb4_u_a, i),
             cci14=_at(cci14_a, i), cci45=_at(cci45_a, i), cci200=_at(cci200_a, i),
             macd12_26=_at(ml12_a, i), macd_signal=_at(sl12_a, i), macd_hist=_at(hist12_a, i),
             macd_11_27=_at(ml11_a, i), macd_hist_11_27=_at(hist11_a, i),
@@ -211,6 +217,13 @@ class KrakenFeatureSet(FeatureSet):
     """Extended FeatureSet with all 26 Kraken strategy indicators."""
 
     rsi11: float = 50.0   # RSI(11) — bb_rsi/bb_rsi_m30's own period, distinct from the shared RSI(14) above
+
+    # Wider Bollinger deviations (bb_lower/bb_mid/bb_upper above are dev=2) —
+    # multi_bb_app's three-band system.
+    bb3_lower: float = 0.0
+    bb3_upper: float = 0.0
+    bb4_lower: float = 0.0
+    bb4_upper: float = 0.0
 
     # CCI indicators
     cci14: float = 0.0
@@ -338,6 +351,8 @@ def build_kraken(
     bb_lower, bb_mid, bb_upper = indicators.bollinger(closes, 20, 2.0)  # Returns tuple of 3 floats
     prev_bb_mid = (indicators.bollinger(closes[:-1], 20, 2.0)[1]
                    if len(closes) > 1 else bb_mid)
+    bb3_lower, _, bb3_upper = indicators.bollinger(closes, 20, 3.0)
+    bb4_lower, _, bb4_upper = indicators.bollinger(closes, 20, 4.0)
 
     # CCI
     cci14_arr = kraken_indicators.cci(highs, lows, closes, 14)
@@ -423,6 +438,10 @@ def build_kraken(
         bb_lower=bb_lower,
         bb_mid=bb_mid,
         bb_upper=bb_upper,
+        bb3_lower=bb3_lower,
+        bb3_upper=bb3_upper,
+        bb4_lower=bb4_lower,
+        bb4_upper=bb4_upper,
         # CCI
         cci14=float(cci14_arr[-1]) if len(cci14_arr) else 0.0,
         cci45=float(cci45_arr[-1]) if len(cci45_arr) else 0.0,

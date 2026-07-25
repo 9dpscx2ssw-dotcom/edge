@@ -51,6 +51,18 @@ strategies:
     params:
       period_bb: 20
 
+  # Faithful replica of the source app spec: bounded dev2-dev3 entry zone
+  # (not the unbounded single-band trigger above), fixed-point exits, scoped
+  # to the app's own instrument (GBP/JPY — add it to config.yaml's
+  # instruments list and enable it to actually trade this). 15m for the same
+  # documented cost-floor reason as multi_bb, not the app's M1. Shadow-only
+  # once GBPJPY is enabled; starts off.
+  - name: multi_bb_app
+    mode: "off"
+    timeframe: 15m
+    symbols: [GBPJPY]
+    params: {}
+
   - name: fvg_m30                # fair-value-gap fill — best live win rate at M30 (59%)
     mode: shadow
     timeframe: 30m

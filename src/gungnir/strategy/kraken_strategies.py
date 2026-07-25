@@ -842,6 +842,98 @@ class MultiBBStrategy(Strategy):
         return []
 
 
+class MultiBBAppStrategy(Strategy):
+    """Faithful replica of the source app "Bollinger Bands for GBP/JPY" —
+    kept separate from `multi_bb` (S12) above.
+
+    `multi_bb` diverges from this app spec in ways worth keeping split out
+    rather than reverting: it collapsed the app's three-band (dev 2/3/4)
+    system down to a single dev=2 band with an UNBOUNDED entry (any
+    excursion past dev2 fires, arbitrarily far — not just the dev2-to-dev3
+    zone the app describes), it isn't scoped to GBP/JPY (the instrument the
+    app is literally named for and point-calibrated to), and it runs on 15m
+    rather than the app's M1 — the latter is a deliberate, documented
+    cost-floor tradeoff (see strategies.yaml), preserved here too rather
+    than reverted, since M1/M5 rarely clear retail spreads regardless of
+    which variant is asking.
+
+    Entry: price in the BOUNDED zone between the dev=2 and dev=3 lines —
+    "reached the bottom line of dev2, or trading between dev2 and dev3" per
+    the app text, which (2,3) inclusive resolves to bounded, not open-ended.
+    dev=4 is computed (`bb4_lower`/`bb4_upper`, a named indicator in the
+    app's list) but not gated on here: the app's buy/sell/exit rules never
+    reference it, so no rule is invented for a boundary the source doesn't
+    state one for.
+
+    Exit: SL = 2 points beyond the nearest confirmed local low/high (reuses
+    `_fractal_low`/`_fractal_high`, the swing-point detector built for
+    ema_stoch_rsi); TP = a fixed 15 points from entry. Both toggleable.
+    """
+
+    name = "multi_bb_app"
+    family = "meanrev"
+    DEFAULTS = {
+        "conviction_base": 0.5,
+        "tp_points": 15.0,          # app: 15 points from the opening price
+        "sl_buffer_points": 2.0,    # app: 2 points beyond the nearest local low/high
+        "fixed_exit_enabled": 1.0,
+        "swing_fractal_order": 2.0,
+        "swing_lookback": 50.0,
+    }
+    BOUNDS = {"conviction_base": (0.3, 0.8), "tp_points": (7.0, 20.0)}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._entry_candles: list = []   # stashed by generate() for custom_brackets
+
+    def generate(self, features: KrakenFeatureSet) -> list[Signal]:
+        if not isinstance(features, KrakenFeatureSet):
+            return []
+        price = features.last_price
+        base = self.p("conviction_base")
+        zone = max(features.bb_lower - features.bb3_lower, 1e-9)
+
+        if features.bb3_lower <= price <= features.bb_lower:
+            depth = min((features.bb_lower - price) / zone, 1.0)
+            self._entry_candles = features.candles
+            return _sig(self, features, Side.BUY, base + 0.3 * depth)
+        elif features.bb_upper <= price <= features.bb3_upper:
+            depth = min((price - features.bb_upper) / zone, 1.0)
+            self._entry_candles = features.candles
+            return _sig(self, features, Side.SELL, base + 0.3 * depth)
+        return []
+
+    def custom_brackets(
+        self, side: Side, entry_price: float, symbol: str
+    ) -> tuple[float | None, float | None] | None:
+        if self.p("fixed_exit_enabled") <= 0:
+            return None
+        point = _fx_point_size(symbol)
+        if not point:
+            return None
+        tp_dist = self.p("tp_points") * point
+        tp = entry_price + tp_dist if side == Side.BUY else entry_price - tp_dist
+
+        stop = None
+        if self._entry_candles:
+            order = max(1, int(self.p("swing_fractal_order")))
+            lookback = max(2 * order + 1, int(self.p("swing_lookback")))
+            buffer_dist = self.p("sl_buffer_points") * point
+            if side == Side.BUY:
+                swing = _fractal_low(self._entry_candles, order, lookback)
+                if swing is not None:
+                    stop = swing - buffer_dist
+                    if stop >= entry_price:
+                        stop = None
+            else:
+                swing = _fractal_high(self._entry_candles, order, lookback)
+                if swing is not None:
+                    stop = swing + buffer_dist
+                    if stop <= entry_price:
+                        stop = None
+        return stop, tp
+
+
 class MACDStochStrategy(Strategy):
     """S13: MACD(13,26,9) + Stochastic(5,3,3) — M1."""
 
@@ -1034,6 +1126,7 @@ KRAKEN_STRATEGIES = [
     BBRSIM30Strategy,
     IntelligentTradingStrategy,
     MultiBBStrategy,
+    MultiBBAppStrategy,
     MACDStochStrategy,
     AlligatorStrategy,
     HMADonchianM1Strategy,
