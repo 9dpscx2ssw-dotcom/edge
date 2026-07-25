@@ -90,47 +90,74 @@ def test_buy_still_requires_rsi_above_mid():
     assert sigs == []
 
 
-# ── custom_brackets: previous swing low/high stop ──────────────────────────────
+# ── custom_brackets: previous confirmed local low/high (fractal) stop ─────────
+#
+# Lows [100, 95, 85, 96, 99, 101, 103] with default order=2: index 2 (low=85)
+# sits below both bars on each side (100/95 before, 96/99 after) — a
+# confirmed local low. Indices 3 and 4 fail (each has a lower low within its
+# own 2-bar radius), so 85 is also the MOST RECENT confirmed swing point,
+# not just the lowest value in the window — the distinction a plain rolling
+# minimum would miss.
 
-def test_buy_stop_at_swing_low_of_lookback_window():
-    s = _strat(swing_lookback=3.0)
-    s._entry_candles = _candles([(95.0, 105.0), (90.0, 104.0), (96.0, 106.0)])
-    result = s.custom_brackets(Side.BUY, entry_price=106.0, symbol="EURUSD")
-    assert result == (90.0, None)
+_DIP_LOWS = [(100.0, 110.0), (95.0, 108.0), (85.0, 105.0), (96.0, 109.0),
+             (99.0, 111.0), (101.0, 112.0), (103.0, 113.0)]
+_PEAK_HIGHS = [(80.0, 90.0), (90.0, 100.0), (105.0, 115.0), (91.0, 101.0),
+               (85.0, 95.0), (83.0, 93.0), (81.0, 91.0)]
 
 
-def test_sell_stop_at_swing_high_of_lookback_window():
-    s = _strat(swing_lookback=3.0)
-    s._entry_candles = _candles([(95.0, 105.0), (90.0, 108.0), (96.0, 106.0)])
-    result = s.custom_brackets(Side.SELL, entry_price=90.0, symbol="EURUSD")
-    assert result == (108.0, None)
+def test_buy_stop_at_most_recent_confirmed_fractal_low():
+    s = _strat()
+    s._entry_candles = _candles(_DIP_LOWS)
+    result = s.custom_brackets(Side.BUY, entry_price=113.0, symbol="EURUSD")
+    assert result == (85.0, None)
 
 
-def test_swing_stop_only_uses_the_last_lookback_bars():
-    s = _strat(swing_lookback=2.0)
-    # Lowest low (80.0) is outside the 2-bar lookback window — excluded.
-    s._entry_candles = _candles([(80.0, 90.0), (95.0, 105.0), (96.0, 106.0)])
-    result = s.custom_brackets(Side.BUY, entry_price=106.0, symbol="EURUSD")
-    assert result == (95.0, None)
+def test_sell_stop_at_most_recent_confirmed_fractal_high():
+    s = _strat()
+    s._entry_candles = _candles(_PEAK_HIGHS)
+    result = s.custom_brackets(Side.SELL, entry_price=80.0, symbol="EURUSD")
+    assert result == (115.0, None)
+
+
+def test_fractal_low_ignores_an_unconfirmed_dip_at_the_edge():
+    # A lower low sits at the very last bar, but with no bars after it to
+    # confirm the fractal it must not be used — 85 (fully confirmed) wins.
+    s = _strat()
+    s._entry_candles = _candles(_DIP_LOWS + [(70.0, 114.0)])
+    result = s.custom_brackets(Side.BUY, entry_price=114.0, symbol="EURUSD")
+    assert result == (85.0, None)
+
+
+def test_no_confirmed_fractal_in_a_monotonic_run_yields_none():
+    # Strictly rising lows: no bar is ever below both its neighbours.
+    s = _strat()
+    s._entry_candles = _candles([(90.0 + i, 100.0 + i) for i in range(10)])
+    assert s.custom_brackets(Side.BUY, entry_price=200.0, symbol="EURUSD") is None
 
 
 def test_swing_stop_rejected_if_on_wrong_side_of_entry():
-    s = _strat(swing_lookback=3.0)
-    # Swing low (99.0) is above the entry price — nonsensical as a long stop.
-    s._entry_candles = _candles([(99.0, 105.0), (100.0, 104.0), (101.0, 106.0)])
-    assert s.custom_brackets(Side.BUY, entry_price=98.0, symbol="EURUSD") is None
+    # Fractal low (85.0) is above the entry price — nonsensical as a long stop.
+    s = _strat()
+    s._entry_candles = _candles(_DIP_LOWS)
+    assert s.custom_brackets(Side.BUY, entry_price=80.0, symbol="EURUSD") is None
 
 
 def test_swing_stop_toggle_off():
     s = _strat(swing_stop_enabled=0.0)
-    s._entry_candles = _candles([(90.0, 105.0)])
-    assert s.custom_brackets(Side.BUY, entry_price=106.0, symbol="EURUSD") is None
+    s._entry_candles = _candles(_DIP_LOWS)
+    assert s.custom_brackets(Side.BUY, entry_price=113.0, symbol="EURUSD") is None
 
 
 def test_swing_stop_no_entry_candles_yields_none():
     s = _strat()
     assert s._entry_candles == []
     assert s.custom_brackets(Side.BUY, entry_price=100.0, symbol="EURUSD") is None
+
+
+def test_swing_stop_requires_enough_bars_to_confirm_a_fractal():
+    s = _strat()
+    s._entry_candles = _candles(_DIP_LOWS[:3])   # only 3 bars; order=2 needs 5
+    assert s.custom_brackets(Side.BUY, entry_price=113.0, symbol="EURUSD") is None
 
 
 # ── stoch_exhaustion_exit toggle ────────────────────────────────────────────────

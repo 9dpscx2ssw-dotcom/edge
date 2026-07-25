@@ -71,6 +71,42 @@ def _daily_pivot(candles: list) -> tuple[float, float, float] | None:
     return p, r1, s1
 
 
+def _fractal_low(candles: list, order: int, lookback: int) -> float | None:
+    """The most recent CONFIRMED local low — a bar whose low sits below the
+    ``order`` bars on both sides of it (the classic Williams-fractal swing
+    point) — searched over the last ``lookback`` candles.
+
+    This is "the previous local low" the app's stop-loss rule references: an
+    actual swing point, not just the lowest low over an arbitrary window (a
+    rolling minimum can pick the entry bar's own low, giving a degenerate
+    near-zero-room stop, or reach back to an unrelated old level).
+    """
+    if len(candles) < 2 * order + 1:
+        return None
+    window = candles[-lookback:] if len(candles) > lookback else candles
+    n = len(window)
+    for i in range(n - 1 - order, order - 1, -1):
+        lo = window[i].low
+        if (all(lo < window[i - k].low for k in range(1, order + 1))
+                and all(lo < window[i + k].low for k in range(1, order + 1))):
+            return lo
+    return None
+
+
+def _fractal_high(candles: list, order: int, lookback: int) -> float | None:
+    """Mirror of `_fractal_low`: the most recent confirmed local high."""
+    if len(candles) < 2 * order + 1:
+        return None
+    window = candles[-lookback:] if len(candles) > lookback else candles
+    n = len(window)
+    for i in range(n - 1 - order, order - 1, -1):
+        hi = window[i].high
+        if (all(hi > window[i - k].high for k in range(1, order + 1))
+                and all(hi > window[i + k].high for k in range(1, order + 1))):
+            return hi
+    return None
+
+
 class _EMA921ADXDMITrendBase(Strategy):
     """Closed-bar EMA(9,21,55) + Momentum(0) + DMI histogram + ADX(14)."""
 
@@ -456,9 +492,10 @@ class EMAStochRSIStrategy(Strategy):
         `stoch_exit_upper` (70) for longs, below `stoch_exit_lower` (30) for
         shorts — instead of the generic ATR target
         (`stoch_exhaustion_exit_enabled`; see Agent._manage_exits).
-      * The stop sits at the previous swing low/high over `swing_lookback`
-        bars, not a fixed ATR distance (`swing_stop_enabled`; see
-        `custom_brackets`).
+      * The stop sits at the previous confirmed local low/high (a Williams-
+        fractal swing point, not a rolling window minimum/maximum — see
+        `_fractal_low`/`_fractal_high`) instead of a fixed ATR distance
+        (`swing_stop_enabled`; see `custom_brackets`).
     """
 
     name = "ema_stoch_rsi"
@@ -469,12 +506,13 @@ class EMAStochRSIStrategy(Strategy):
         "stoch_slope_confirm_enabled": 1.0,
         "stoch_exit_upper": 70.0, "stoch_exit_lower": 30.0,
         "stoch_exhaustion_exit_enabled": 1.0,
-        "swing_lookback": 10.0,
+        "swing_fractal_order": 2.0,   # bars required on each side to confirm a swing point
+        "swing_lookback": 50.0,       # how far back to search for one
         "swing_stop_enabled": 1.0,
     }
     BOUNDS = {"rsi_mid": (40.0, 60.0), "stoch_upper": (60.0, 95.0),
               "stoch_lower": (5.0, 40.0), "conviction_base": (0.3, 0.8),
-              "swing_lookback": (5.0, 30.0)}
+              "swing_lookback": (20.0, 100.0)}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -517,14 +555,13 @@ class EMAStochRSIStrategy(Strategy):
         # target, so only the stop leg is overridden here.
         if self.p("swing_stop_enabled") <= 0 or not self._entry_candles:
             return None
-        lookback = max(1, int(self.p("swing_lookback")))
-        candles = self._entry_candles
-        window = candles[-lookback:] if len(candles) >= lookback else candles
+        order = max(1, int(self.p("swing_fractal_order")))
+        lookback = max(2 * order + 1, int(self.p("swing_lookback")))
         if side == Side.BUY:
-            stop = min(c.low for c in window)
-            return (stop, None) if stop < entry_price else None
-        stop = max(c.high for c in window)
-        return (stop, None) if stop > entry_price else None
+            stop = _fractal_low(self._entry_candles, order, lookback)
+            return (stop, None) if stop is not None and stop < entry_price else None
+        stop = _fractal_high(self._entry_candles, order, lookback)
+        return (stop, None) if stop is not None and stop > entry_price else None
 
 
 class CCIReversalStrategy(Strategy):
