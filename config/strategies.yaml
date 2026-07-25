@@ -243,6 +243,30 @@ strategies:
     symbols: []
     params: {}
 
+  # Faithful replica of the source app "Awesome and MACD": a zero-line AO
+  # cross confirmed by the MACD(5,7,4) histogram's zone — ao_macd above uses
+  # a static level-agreement check instead. Shadow-only once vetted; off by
+  # default.
+  - name: ao_macd_app
+    mode: "off"
+    timeframe: 4h
+    symbols: []
+    params: {}
+
+  # Source app "Follow the Trend": EMA(4,10) cross + ADX(28)/DI + MACD(5,10,4),
+  # registered per its own H4/D1 exit-table rows (60pt/200pt TP, SL = TP/3).
+  - name: follow_the_trend_h4
+    mode: "off"
+    timeframe: 4h
+    symbols: []
+    params: {}
+
+  - name: follow_the_trend_d1
+    mode: "off"
+    timeframe: 1d
+    symbols: []
+    params: {}
+
   - name: intelligent_trading
     mode: "off"
     timeframe: 1h

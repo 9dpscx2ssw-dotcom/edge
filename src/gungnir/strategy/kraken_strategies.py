@@ -722,6 +722,66 @@ class AwesomeOscillatorStrategy(Strategy):
         return []
 
 
+class AwesomeMACDAppStrategy(Strategy):
+    """Faithful replica of the source app "Awesome and MACD" strategy — H4.
+
+    Kept separate from `ao_macd` above, which uses a static level-agreement
+    check (AO and MACD both positive/negative right now) rather than the
+    app's actual rule: a zero-line CROSS on the Awesome Oscillator,
+    confirmed by the MACD *histogram*'s current zone — a momentum-pullback
+    entry (buy when AO's momentum is fading through zero while the MACD
+    histogram is still positive from the prior move), not a simple
+    same-direction alignment.
+
+    Entry:
+      Buy:  AO crosses the zero line FROM ABOVE (prev_ao >= 0, ao < 0) while
+            the MACD(5,7,4) histogram is still positive.
+      Sell: AO crosses the zero line FROM BELOW (prev_ao <= 0, ao > 0) while
+            the histogram is still negative.
+    Exit (custom_brackets, FX pairs only): TP 50-70 points from entry
+    (`tp_points`, default 60 — the app gives a range, not a single value);
+    SL a flat 20 points (`sl_points`).
+    """
+
+    name = "ao_macd_app"
+    family = "oscillator"
+    DEFAULTS = {
+        "conviction_base": 0.5,
+        "tp_points": 60.0,     # app: 50-70 points
+        "sl_points": 20.0,
+        "fixed_exit_enabled": 1.0,
+    }
+    BOUNDS = {"conviction_base": (0.3, 0.8), "tp_points": (50.0, 70.0)}
+
+    def generate(self, features: KrakenFeatureSet) -> list[Signal]:
+        if not isinstance(features, KrakenFeatureSet):
+            return []
+        conviction = self.p("conviction_base")
+        crossed_down_thru_zero = _crossed_down(features.prev_ao, 0.0, features.ao, 0.0)
+        crossed_up_thru_zero = _crossed_up(features.prev_ao, 0.0, features.ao, 0.0)
+        hist = features.macd_hist_5_7
+
+        if crossed_down_thru_zero and hist > 0:
+            return _sig(self, features, Side.BUY, conviction)
+        elif crossed_up_thru_zero and hist < 0:
+            return _sig(self, features, Side.SELL, conviction)
+        return []
+
+    def custom_brackets(
+        self, side: Side, entry_price: float, symbol: str
+    ) -> tuple[float | None, float | None] | None:
+        if self.p("fixed_exit_enabled") <= 0:
+            return None
+        point = _fx_point_size(symbol)
+        if not point:
+            return None
+        tp_dist = self.p("tp_points") * point
+        sl_dist = self.p("sl_points") * point
+        if side == Side.BUY:
+            return entry_price - sl_dist, entry_price + tp_dist
+        return entry_price + sl_dist, entry_price - tp_dist
+
+
 class _BBRSIBase(Strategy):
     """Source app "Bollinger Bands and RSI": BB(20,2) + RSI(11) breakout-
     continuation, shared across the app's two listed timeframes (bb_rsi/M15,
@@ -1144,6 +1204,74 @@ class FashionablyLateScalpM5Strategy(_ScalpEMAVWAPBase):
     name = "scalp_ema_vwap_m5"
 
 
+class _FollowTheTrendBase(Strategy):
+    """Faithful replica of the source app "Follow the Trend" strategy,
+    split into independent per-timeframe strategies (H4, D1 — its own exit
+    table gives each a different TP) rather than one strategy with a
+    timeframe-conditional bracket, same pattern as `_BBRSIBase`.
+
+    Entry:
+      Buy:  +DI(28) > -DI(28) AND 4EMA crosses 10EMA from below AND
+            MACD(5,10,4) > 0.
+      Sell: -DI(28) > +DI(28) AND 4EMA crosses 10EMA from above AND
+            MACD(5,10,4) < 0.
+    Exit (custom_brackets, FX pairs only): TP is a fixed points distance
+    read from `_TP_POINTS` (keyed by timeframe: 60 on H4, 200 on D1); SL is
+    exactly 1/3 of TP ("StopLoss: 3 times less than TP").
+    """
+
+    family = "trend"
+    DEFAULTS = {"conviction_base": 0.5, "fixed_exit_enabled": 1.0}
+    BOUNDS = {"conviction_base": (0.3, 0.8)}
+
+    # App's fixed-points TP table, keyed by timeframe; SL is always TP/3.
+    _TP_POINTS = {"4h": 60.0, "1d": 200.0}
+
+    def generate(self, features: KrakenFeatureSet) -> list[Signal]:
+        if not isinstance(features, KrakenFeatureSet):
+            return []
+        conviction = self.p("conviction_base")
+        crossed_up = _crossed_up(features.prev_ema4, features.prev_ema10,
+                                 features.ema4, features.ema10)
+        crossed_down = _crossed_down(features.prev_ema4, features.prev_ema10,
+                                     features.ema4, features.ema10)
+
+        if (features.plus_di28 > features.minus_di28 and crossed_up
+                and features.macd_5_10 > 0):
+            return _sig(self, features, Side.BUY, conviction)
+        elif (features.minus_di28 > features.plus_di28 and crossed_down
+                and features.macd_5_10 < 0):
+            return _sig(self, features, Side.SELL, conviction)
+        return []
+
+    def custom_brackets(
+        self, side: Side, entry_price: float, symbol: str
+    ) -> tuple[float | None, float | None] | None:
+        if self.p("fixed_exit_enabled") <= 0:
+            return None
+        point = _fx_point_size(symbol)
+        if not point:
+            return None
+        tp_pts = self._TP_POINTS.get(self.timeframe)
+        if tp_pts is None:
+            return None
+        tp_dist = tp_pts * point
+        sl_dist = (tp_pts / 3.0) * point
+        if side == Side.BUY:
+            return entry_price - sl_dist, entry_price + tp_dist
+        return entry_price + sl_dist, entry_price - tp_dist
+
+
+class FollowTheTrendH4Strategy(_FollowTheTrendBase):
+    """Follow the Trend: EMA(4,10) + ADX(28)/DI + MACD(5,10,4) — H4."""
+    name = "follow_the_trend_h4"
+
+
+class FollowTheTrendD1Strategy(_FollowTheTrendBase):
+    """Follow the Trend: EMA(4,10) + ADX(28)/DI + MACD(5,10,4) — D1."""
+    name = "follow_the_trend_d1"
+
+
 # Registry of all 26 strategies
 KRAKEN_STRATEGIES = [
     CCIMACDStrategy,
@@ -1158,6 +1286,7 @@ KRAKEN_STRATEGIES = [
     ADXMomentumStrategy,
     BBRSICuttingStrategy,
     AwesomeOscillatorStrategy,
+    AwesomeMACDAppStrategy,
     BBRSIStrategy,
     BBRSIM30Strategy,
     IntelligentTradingStrategy,
@@ -1181,4 +1310,6 @@ KRAKEN_STRATEGIES = [
     EMA921ADXDMITrendM15Strategy,
     EMA921EMA78TrendM5Strategy,
     EMA921EMA78TrendM15Strategy,
+    FollowTheTrendH4Strategy,
+    FollowTheTrendD1Strategy,
 ]

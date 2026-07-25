@@ -159,6 +159,24 @@ strategies:
     symbols: []
     params: {}
 
+  - name: ao_macd_app
+    mode: "off"
+    timeframe: 4h
+    symbols: []
+    params: {}
+
+  - name: follow_the_trend_h4
+    mode: "off"
+    timeframe: 4h
+    symbols: []
+    params: {}
+
+  - name: follow_the_trend_d1
+    mode: "off"
+    timeframe: 1d
+    symbols: []
+    params: {}
+
   - name: intelligent_trading
     mode: "off"
     timeframe: 1h

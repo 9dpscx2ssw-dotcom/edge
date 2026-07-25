@@ -106,6 +106,7 @@ def build_kraken_series(symbol: str, candles: list[Candle]) -> list["KrakenFeatu
     # Array indicators (full series, one pass each).
     ema_fast_a = indicators.ema(closes, 20)
     ema_slow_a = indicators.ema(closes, 50)
+    ema4_a = indicators.ema(closes, 4)
     ema5_a, ema7_a, ema8_a, ema9_a, ema10_a = (indicators.ema(closes, 5), indicators.ema(closes, 7),
                                                   indicators.ema(closes, 8), indicators.ema(closes, 9),
                                                   indicators.ema(closes, 10))
@@ -121,10 +122,12 @@ def build_kraken_series(symbol: str, candles: list[Candle]) -> list["KrakenFeatu
     ml12_a, sl12_a, hist12_a = kraken_indicators.macd(closes, 12, 26, 2)
     ml11_a, _, hist11_a = kraken_indicators.macd(closes, 11, 27, 4)
     ml13_a, _, _ = kraken_indicators.macd(closes, 13, 26, 9)
-    ml5_a, _, _ = kraken_indicators.macd(closes, 5, 7, 4)
+    ml5_a, _, hist5_a = kraken_indicators.macd(closes, 5, 7, 4)
+    ml5_10_a, _, _ = kraken_indicators.macd(closes, 5, 10, 4)   # follow_the_trend_h4/d1
     sar_a, sar_trend_a = kraken_indicators.parabolic_sar(highs, lows)
     k_a, d_a = kraken_indicators.stochastic(highs, lows, closes, 14, 3, 3)
     adx_a, pdi_a, mdi_a = kraken_indicators.adx(highs, lows, closes, 14)
+    adx28_a, pdi28_a, mdi28_a = kraken_indicators.adx(highs, lows, closes, 28)   # follow_the_trend_h4/d1
     mom_a = kraken_indicators.momentum(closes, 14)
     ao_a = kraken_indicators.awesome_oscillator(highs, lows)
     hma55_a = kraken_indicators.hma(closes, 55)
@@ -171,15 +174,18 @@ def build_kraken_series(symbol: str, candles: list[Candle]) -> list["KrakenFeatu
             cci14=_at(cci14_a, i), cci45=_at(cci45_a, i), cci200=_at(cci200_a, i),
             macd12_26=_at(ml12_a, i), macd_signal=_at(sl12_a, i), macd_hist=_at(hist12_a, i),
             macd_11_27=_at(ml11_a, i), macd_hist_11_27=_at(hist11_a, i),
-            macd_13_26=_at(ml13_a, i), macd_5_7=_at(ml5_a, i),
+            macd_13_26=_at(ml13_a, i), macd_5_7=_at(ml5_a, i), macd_hist_5_7=_at(hist5_a, i),
+            macd_5_10=_at(ml5_10_a, i),
             sar=_at(sar_a, i), sar_trend=_at(sar_trend_a, i, 1.0),
             stoch_k=_at(k_a, i, 50.0), stoch_d=_at(d_a, i, 50.0),
             prev_stoch_k=_at(k_a, i - 1, 50.0), prev_stoch_d=_at(d_a, i - 1, 50.0),
+            ema4=_at(ema4_a, i, last), prev_ema4=_at(ema4_a, i - 1, last),
             ema5=_at(ema5_a, i, last),
             ema7=_at(ema7_a, i, last), prev_ema7=_at(ema7_a, i - 1, last),
             ema8=_at(ema8_a, i, last), prev_ema8=_at(ema8_a, i - 1, last),
             ema9=_at(ema9_a, i, last), prev_ema9=_at(ema9_a, i - 1, last),
-            ema10=_at(ema10_a, i, last), ema21=_at(ema21_a, i, last),
+            ema10=_at(ema10_a, i, last), prev_ema10=_at(ema10_a, i - 1, last),
+            ema21=_at(ema21_a, i, last),
             prev_ema21=_at(ema21_a, i - 1, last), ema50=_at(ema50_a, i, last),
             ema55=_at(ema55_a, i, last), momentum_zero=_at(momentum_zero_a, i),
             dmi_histogram=_at(pdi_a, i) - _at(mdi_a, i),
@@ -188,7 +194,8 @@ def build_kraken_series(symbol: str, candles: list[Candle]) -> list["KrakenFeatu
             smma2=_at(smma2_a, i, last), prev_smma2=_at(smma2_a, i - 1, last),
             prev_bb_mid=_at(bb_m_a, i - 1, last),
             adx=_at(adx_a, i), plus_di=_at(pdi_a, i), minus_di=_at(mdi_a, i),
-            momentum=_at(mom_a, i, 100.0), ao=_at(ao_a, i),
+            adx28=_at(adx28_a, i), plus_di28=_at(pdi28_a, i), minus_di28=_at(mdi28_a, i),
+            momentum=_at(mom_a, i, 100.0), ao=_at(ao_a, i), prev_ao=_at(ao_a, i - 1),
             hma55=_at(hma55_a, i), dc_upper=_at(dc_u_a, i), dc_lower=_at(dc_l_a, i),
             dc_mid=_at(dc_m_a, i), dc_trend=_at(dc_trend_a, i, 1.0),
             vwap_val=_at(vwap_a, i),
@@ -238,6 +245,8 @@ class KrakenFeatureSet(FeatureSet):
     macd_hist_11_27: float = 0.0  # histogram (line - signal) for the (11,27,4) config
     macd_13_26: float = 0.0
     macd_5_7: float = 0.0
+    macd_hist_5_7: float = 0.0     # histogram for (5,7,4) — ao_macd_app entry
+    macd_5_10: float = 0.0         # MACD(5,10,4) line — follow_the_trend_h4/d1
 
     # Parabolic SAR
     sar: float = 0.0
@@ -250,6 +259,8 @@ class KrakenFeatureSet(FeatureSet):
     prev_stoch_d: float = 50.0   # prior-bar %D, for slope confirmation
 
     # Additional MAs
+    ema4: float = 0.0            # follow_the_trend_h4/d1's fast leg
+    prev_ema4: float = 0.0
     ema5: float = 0.0
     ema7: float = 0.0
     prev_ema7: float = 0.0
@@ -258,6 +269,7 @@ class KrakenFeatureSet(FeatureSet):
     ema9: float = 0.0
     prev_ema9: float = 0.0
     ema10: float = 0.0
+    prev_ema10: float = 0.0
     ema21: float = 0.0
     prev_ema21: float = 0.0
     ema50: float = 0.0
@@ -276,8 +288,12 @@ class KrakenFeatureSet(FeatureSet):
     adx: float = 0.0
     plus_di: float = 0.0
     minus_di: float = 0.0
+    adx28: float = 0.0            # follow_the_trend_h4/d1's own ADX period
+    plus_di28: float = 0.0
+    minus_di28: float = 0.0
     momentum: float = 100.0
     ao: float = 0.0  # Awesome Oscillator
+    prev_ao: float = 0.0  # prior-bar AO, for zero-line cross detection (ao_macd_app)
     hma55: float = 0.0
     dc_upper: float = 0.0
     dc_lower: float = 0.0
@@ -364,6 +380,7 @@ def build_kraken(
     ml11, sl11, hist11 = kraken_indicators.macd(closes, 11, 27, 4)
     ml13, sl13, hist13 = kraken_indicators.macd(closes, 13, 26, 9)
     ml5, sl5, hist5 = kraken_indicators.macd(closes, 5, 7, 4)
+    ml5_10, _, _ = kraken_indicators.macd(closes, 5, 10, 4)   # follow_the_trend_h4/d1
 
     # SAR
     sar, sar_trend = kraken_indicators.parabolic_sar(highs, lows)
@@ -372,18 +389,23 @@ def build_kraken(
     k, d = kraken_indicators.stochastic(highs, lows, closes, 14, 3, 3)
 
     # EMAs
+    ema4_a = indicators.ema(closes, 4)
     ema5 = float(indicators.ema(closes, 5)[-1])
     ema7_a, ema8_a, ema9_a = (indicators.ema(closes, 7), indicators.ema(closes, 8),
                                indicators.ema(closes, 9))
+    ema10_a = indicators.ema(closes, 10)
     ema21_a, ema55_a = indicators.ema(closes, 21), indicators.ema(closes, 55)
+    ema4 = float(ema4_a[-1])
     ema7, ema8, ema9 = float(ema7_a[-1]), float(ema8_a[-1]), float(ema9_a[-1])
-    ema10 = float(indicators.ema(closes, 10)[-1])
+    ema10 = float(ema10_a[-1])
     ema21 = float(ema21_a[-1])
     ema50 = float(indicators.ema(closes, 50)[-1])
     ema55 = float(ema55_a[-1])
+    prev_ema4 = float(ema4_a[-2]) if len(ema4_a) > 1 else ema4
     prev_ema7 = float(ema7_a[-2]) if len(ema7_a) > 1 else 0.0
     prev_ema8 = float(ema8_a[-2]) if len(ema8_a) > 1 else 0.0
     prev_ema9 = float(ema9_a[-2]) if len(ema9_a) > 1 else 0.0
+    prev_ema10 = float(ema10_a[-2]) if len(ema10_a) > 1 else ema10
     prev_ema21 = float(ema21_a[-2]) if len(ema21_a) > 1 else 0.0
     momentum_zero = float(closes[-1] - closes[-15]) if len(closes) >= 15 else 0.0
 
@@ -398,6 +420,7 @@ def build_kraken(
 
     # ADX
     adx_arr, pdi, mdi = kraken_indicators.adx(highs, lows, closes, 14)
+    adx28_arr, pdi28, mdi28 = kraken_indicators.adx(highs, lows, closes, 28)   # follow_the_trend_h4/d1
 
     # Momentum & AO
     mom = kraken_indicators.momentum(closes, 14)
@@ -454,6 +477,8 @@ def build_kraken(
         macd_hist_11_27=float(hist11[-1]) if len(hist11) else 0.0,
         macd_13_26=float(ml13[-1]) if len(ml13) else 0.0,
         macd_5_7=float(ml5[-1]) if len(ml5) else 0.0,
+        macd_hist_5_7=float(hist5[-1]) if len(hist5) else 0.0,
+        macd_5_10=float(ml5_10[-1]) if len(ml5_10) else 0.0,
         # SAR
         sar=float(sar[-1]) if len(sar) else 0.0,
         sar_trend=float(sar_trend[-1]) if len(sar_trend) else 1.0,
@@ -463,6 +488,8 @@ def build_kraken(
         prev_stoch_k=float(k[-2]) if len(k) > 1 else (float(k[-1]) if len(k) else 50.0),
         prev_stoch_d=float(d[-2]) if len(d) > 1 else (float(d[-1]) if len(d) else 50.0),
         # EMAs
+        ema4=ema4,
+        prev_ema4=prev_ema4,
         ema5=ema5,
         ema7=ema7,
         prev_ema7=prev_ema7,
@@ -471,6 +498,7 @@ def build_kraken(
         ema9=ema9,
         prev_ema9=prev_ema9,
         ema10=ema10,
+        prev_ema10=prev_ema10,
         ema21=ema21,
         prev_ema21=prev_ema21,
         ema50=ema50,
@@ -487,11 +515,15 @@ def build_kraken(
         adx=float(adx_arr[-1]) if len(adx_arr) else 0.0,
         plus_di=float(pdi[-1]) if len(pdi) else 0.0,
         minus_di=float(mdi[-1]) if len(mdi) else 0.0,
+        adx28=float(adx28_arr[-1]) if len(adx28_arr) else 0.0,
+        plus_di28=float(pdi28[-1]) if len(pdi28) else 0.0,
+        minus_di28=float(mdi28[-1]) if len(mdi28) else 0.0,
         dmi_histogram=(float(pdi[-1]) - float(mdi[-1])) if len(pdi) and len(mdi) else 0.0,
         # Momentum: legacy indexed momentum plus the new true zero-line delta.
         momentum=float(mom[-1]) if len(mom) else 100.0,
         momentum_zero=momentum_zero,
         ao=float(ao[-1]) if len(ao) else 0.0,
+        prev_ao=float(ao[-2]) if len(ao) > 1 else 0.0,
         # HMA & Donchian
         hma55=hma55,
         dc_upper=float(dc_u[-1]) if len(dc_u) else 0.0,

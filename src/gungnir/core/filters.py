@@ -27,10 +27,12 @@ STRATEGY_FAMILIES = {
     "ema921_adx_dmi_m5": "trend", "ema921_adx_dmi_m15": "trend",
     "cci_macd": "trend", "cci200_ema_pivot": "trend", "cci200_ema_pivot_app": "trend",
     "intelligent_trading": "trend",
+    "follow_the_trend_h4": "trend", "follow_the_trend_d1": "trend",
     # Oscillator strategies (mapped 24 Jul for correct lineage; no oscillator
     # avoid rule ships yet — no evidence — so this fixes attribution without
     # imposing an unvalidated gate).
     "macd_stoch": "oscillator", "ema_stoch_rsi": "oscillator", "ao_macd": "oscillator",
+    "ao_macd_app": "oscillator",
     "fvg_m1": "structure", "fvg_m5": "structure", "fvg_m15": "structure", "fvg_m30": "structure",
     "scalp_ema_vwap_m1": "scalp", "scalp_ema_vwap_m5": "scalp",
     "hma_dc_m1": "hybrid", "hma_dc_m5": "hybrid", "hma_dc_m15": "hybrid", "hma_dc_h1": "hybrid", "hma_dc_h4": "hybrid", "hma_dc_d1": "hybrid", "consensus": "ensemble",
