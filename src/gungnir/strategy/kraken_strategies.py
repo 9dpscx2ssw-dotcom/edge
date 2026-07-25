@@ -39,6 +39,38 @@ def _has_directional_momentum(momentum_zero: float, direction: int) -> bool:
     return momentum_zero > 0 if direction > 0 else momentum_zero < 0
 
 
+def _fx_point_size(symbol: str) -> float | None:
+    """Standard FX pip size: 0.01 for JPY-quoted pairs, 0.0001 otherwise.
+
+    None for anything that isn't a genuine 6-letter ISO currency pair
+    (indices, commodities, crypto like BTCUSD) — "points" in the
+    app-strategy sense isn't a meaningful unit there, so callers should fall
+    back to the generic ATR-based stop instead of guessing a tick size.
+    """
+    from ..execution.fx import _CCY
+    s = symbol.upper()
+    if len(s) == 6 and s[:3] in _CCY and s[3:] in _CCY:
+        return 0.01 if s.endswith("JPY") else 0.0001
+    return None
+
+
+def _daily_pivot(candles: list) -> tuple[float, float, float] | None:
+    """Classic floor-trader pivot (P, R1, S1) from the last COMPLETED daily
+    candle's H/L/C — the "Daily Pivot" the source app charts actually plot.
+
+    Distinct from ``KrakenFeatureSet.pivot``, which is a per-*bar* artifact
+    (recomputed from the immediately preceding candle on whatever timeframe
+    that FeatureSet represents) and not a real daily level.
+    """
+    if not candles:
+        return None
+    c = candles[-1]
+    p = (c.high + c.low + c.close) / 3
+    r1 = 2 * p - c.low
+    s1 = 2 * p - c.high
+    return p, r1, s1
+
+
 class _EMA921ADXDMITrendBase(Strategy):
     """Closed-bar EMA(9,21,55) + Momentum(0) + DMI histogram + ADX(14)."""
 
@@ -325,6 +357,84 @@ class CCI200EMAStrategy(Strategy):
                 and cci < 0 and price < features.pivot):
             return _sig(self, features, Side.SELL, conviction)
         return []
+
+
+class CCI200EMAPivotAppStrategy(Strategy):
+    """Faithful replica of the source "Scalping strategy with CCI" app spec.
+
+    `cci200_ema_pivot` (S4) diverges from this app spec in three ways it keeps
+    deliberately: (1) it requires a full EMA10>EMA21>EMA50 stack where the app
+    only requires EMA10 above both, (2) it adds a price-vs-pivot ENTRY filter
+    the app never specifies — and the app's own example chart shows a valid
+    buy entered *below* the daily pivot, which that filter would have
+    blocked, and (3) its ``pivot`` field is a per-bar artifact (prior
+    candle's H/L/C), not a real daily pivot. This variant restores the
+    literal app rule on all three and is kept separate so the tightened
+    original isn't disturbed.
+
+    Entry:
+      Buy:  200 CCI > 0 AND EMA10 > EMA21 AND EMA10 > EMA50.
+      Sell: 200 CCI < 0 AND EMA10 < EMA21 AND EMA10 < EMA50.
+
+    Exit (both opt-in via params, on by default — see Agent._manage_exits
+    and Strategy.custom_brackets):
+      TP at the nearest genuine daily pivot level, computed from the last
+      COMPLETED daily candle's H/L/C via ``confirm_timeframe`` — not the
+      per-bar ``KrakenFeatureSet.pivot`` field — OR the position closes
+      outright when EMA10 and EMA21 cross back against it
+      (``ema_cross_exit_enabled``).
+      SL at a fixed points distance (``fixed_stop_points``; FX pairs only —
+      "points" isn't a meaningful unit for indices/crypto, which fall back
+      to the generic ATR stop).
+    """
+
+    name = "cci200_ema_pivot_app"
+    family = "trend"
+    confirm_timeframe = "1d"   # daily candles, for genuine floor-trader pivots
+    DEFAULTS = {
+        "conviction_base": 0.5,
+        "fixed_stop_points": 15.0,        # 0 disables -> generic ATR stop
+        "pivot_target_exit_enabled": 1.0,
+        "ema_cross_exit_enabled": 1.0,
+    }
+    BOUNDS = {"conviction_base": (0.3, 0.8), "fixed_stop_points": (8.0, 25.0)}
+
+    @property
+    def ema_cross_exit(self) -> bool:
+        return self.p("ema_cross_exit_enabled") > 0
+
+    def generate(self, features: KrakenFeatureSet) -> list[Signal]:
+        if not isinstance(features, KrakenFeatureSet):
+            return []
+        cci = features.cci200
+        conviction = self.p("conviction_base")
+        if (features.ema10 > features.ema21 and features.ema10 > features.ema50
+                and cci > 0):
+            return _sig(self, features, Side.BUY, conviction)
+        elif (features.ema10 < features.ema21 and features.ema10 < features.ema50
+                and cci < 0):
+            return _sig(self, features, Side.SELL, conviction)
+        return []
+
+    def custom_brackets(
+        self, side: Side, entry_price: float, symbol: str
+    ) -> tuple[float | None, float | None] | None:
+        stop = tp = None
+        pts = self.p("fixed_stop_points")
+        if pts > 0:
+            point = _fx_point_size(symbol)
+            if point:
+                dist = pts * point
+                stop = entry_price - dist if side == Side.BUY else entry_price + dist
+        if self.p("pivot_target_exit_enabled") > 0:
+            confirm = getattr(self, "_confirm_features", None)
+            candles = getattr(confirm, "candles", None) if confirm else None
+            piv = _daily_pivot(candles) if candles else None
+            if piv:
+                pivot, r1, s1 = piv
+                tp = (r1 if entry_price >= pivot else pivot) if side == Side.BUY \
+                    else (s1 if entry_price <= pivot else pivot)
+        return (stop, tp) if (stop is not None or tp is not None) else None
 
 
 class EMAStochRSIStrategy(Strategy):
@@ -698,6 +808,7 @@ KRAKEN_STRATEGIES = [
     BBMACDStrategy,
     BBMACDSMAppStrategy,
     CCI200EMAStrategy,
+    CCI200EMAPivotAppStrategy,
     EMAStochRSIStrategy,
     CCIReversalStrategy,
     ADXMomentumStrategy,

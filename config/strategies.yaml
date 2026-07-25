@@ -165,6 +165,17 @@ strategies:
     params:
       period_cci: 200
 
+  # Faithful replica of the source app spec — cci200_ema_pivot above adds a
+  # price-vs-pivot entry filter and a stricter EMA stack the app never
+  # specifies (and its "pivot" is a per-bar artifact, not a real daily
+  # level). Shadow-only until this variant has its own track record.
+  - name: cci200_ema_pivot_app
+    mode: "off"
+    timeframe: 15m
+    symbols: []
+    params:
+      period_cci: 200
+
   - name: ema_stoch_rsi
     mode: "off"
     timeframe: 1h

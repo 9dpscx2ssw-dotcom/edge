@@ -24,7 +24,8 @@ STRATEGY_FAMILIES = {
     # crosses and pivots — subject to the trend × range_high/range_low avoid rule.
     "ema78_crossover_m5": "trend", "ema78_crossover_m15": "trend",
     "ema921_adx_dmi_m5": "trend", "ema921_adx_dmi_m15": "trend",
-    "cci_macd": "trend", "cci200_ema_pivot": "trend", "intelligent_trading": "trend",
+    "cci_macd": "trend", "cci200_ema_pivot": "trend", "cci200_ema_pivot_app": "trend",
+    "intelligent_trading": "trend",
     # Oscillator strategies (mapped 24 Jul for correct lineage; no oscillator
     # avoid rule ships yet — no evidence — so this fixes attribution without
     # imposing an unvalidated gate).

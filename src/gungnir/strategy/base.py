@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-from ..data.models import Signal
+from ..data.models import Side, Signal
 from ..features.feature_store import FeatureSet
 
 
@@ -49,6 +49,12 @@ class Strategy(ABC):
     # Agent._manage_exits. 0 ⇒ the generic ATR/breakeven trailing rules apply
     # instead.
     trail_ema_period: int = 0
+
+    # Optional strategy-specific exit signal: a strategy that sets this True
+    # has its position closed outright the moment EMA10 and EMA21 cross back
+    # against the position's side (see Agent._manage_exits). False ⇒ no
+    # effect — positions close only on stop/take-profit like everything else.
+    ema_cross_exit: bool = False
 
     def __init__(
         self,
@@ -96,3 +102,17 @@ class Strategy(ABC):
         if symbol in self.excluded_symbols:
             return False
         return not self.symbols or symbol in self.symbols
+
+    def custom_brackets(
+        self, side: Side, entry_price: float, symbol: str
+    ) -> tuple[float | None, float | None] | None:
+        """Optional stop/take-profit override for a strategy whose source
+        design doesn't use the generic ATR bracket (e.g. a fixed-points stop
+        or a pivot-level target). Called once per opened order, right after
+        the generic `PortfolioRisk.vet()` bracket is computed.
+
+        Return ``(stop, tp)`` — either may be ``None`` to keep the generic
+        ATR-based value for that leg — or ``None`` (the default) to leave
+        both legs exactly as the generic bracket set them.
+        """
+        return None

@@ -928,6 +928,24 @@ class Agent:
                         pos.context["stop"] = stop = new_stop
                         log.debug("EMA-trail %s/%s: stop -> %.5f (ema%d=%.5f)",
                                   symbol, pos.strategy, new_stop, ema_period, ema_val)
+                # Strategy-specific EMA-cross exit (e.g. cci200_ema_pivot_app:
+                # "Take Profit ... after the 10 EMA and 21 EMA cross each other
+                # in the opposite direction"). Opt-in via `ema_cross_exit`;
+                # closes outright rather than moving the stop, since the app
+                # spec treats this as a full exit signal, not a ratchet.
+                if strat_obj is not None and getattr(strat_obj, "ema_cross_exit", False):
+                    strat_tf = getattr(strat_obj, "timeframe", self.tf)
+                    cached = self._feat_cache.get((symbol, strat_tf))
+                    feats = cached[1] if cached else None
+                    flipped = feats is not None and (
+                        (pos.side == Side.BUY and feats.ema10 < feats.ema21) or
+                        (pos.side == Side.SELL and feats.ema10 > feats.ema21))
+                    if flipped:
+                        log.debug("EMA-cross exit for %s/%s: ema10/ema21 flipped against %s",
+                                  symbol, pos.strategy, pos.side.value)
+                        await self._close(broker, symbol, self._last_view.get(symbol, {}),
+                                          pos.strategy, reason="ema-cross-exit")
+                        continue
                 if pos.side == Side.BUY:
                     hit = (stop and price <= stop) or (tp and price >= tp)
                 else:
@@ -2071,6 +2089,17 @@ class Agent:
                         signal, raw, features, book=book, regime=regime,
                         rejection=rejection)
                     continue
+
+                # Strategy-specific bracket override (e.g. cci200_ema_pivot_app:
+                # fixed-points stop + nearest-daily-pivot target, in place of
+                # the generic ATR bracket vet() just computed).
+                custom = strat.custom_brackets(signal.side, features.last_price, symbol)
+                if custom is not None:
+                    custom_stop, custom_tp = custom
+                    if custom_stop is not None:
+                        order.stop_loss = custom_stop
+                    if custom_tp is not None:
+                        order.take_profit = custom_tp
 
                 # RL gate: let the policy decide whether this signal is worth taking.
                 decision = None
