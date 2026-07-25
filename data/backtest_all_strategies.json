@@ -1,6 +1,78 @@
 {
+  "filters_applied": {
+    "trend": false,
+    "volatility": false,
+    "volume": false,
+    "session": false,
+    "spread": true,
+    "regime": true,
+    "vol_min": 0.0001,
+    "vol_max": 0.03,
+    "min_volume_ratio": 0.5,
+    "max_spread_bps": 15.0,
+    "adx_trend": 25.0,
+    "regime_mode": "enforce",
+    "regime_policy_version": "strategy-regime-v2-20260723",
+    "regime_rules": [
+      {
+        "family": "ensemble",
+        "regime": "range_high",
+        "action": "avoid"
+      },
+      {
+        "family": "ensemble",
+        "regime": "range_low",
+        "action": "avoid"
+      },
+      {
+        "family": "trend",
+        "regime": "range_high",
+        "action": "avoid"
+      },
+      {
+        "family": "trend",
+        "regime": "range_low",
+        "action": "avoid"
+      },
+      {
+        "family": "hybrid",
+        "regime": "range_high",
+        "action": "avoid"
+      },
+      {
+        "family": "mean_reversion",
+        "regime": "trend_high",
+        "action": "avoid"
+      },
+      {
+        "family": "scalp",
+        "regime": "trend_high",
+        "action": "avoid"
+      },
+      {
+        "family": "scalp",
+        "regime": "trend_low",
+        "action": "avoid"
+      },
+      {
+        "family": "structure",
+        "regime": "trend_high",
+        "action": "avoid"
+      }
+    ],
+    "noise": true,
+    "noise_mode": "enforce",
+    "noise_min_ema_atr": 0.4,
+    "noise_max_ema_atr": 0.0,
+    "timeframe": true,
+    "min_timeframe_minutes": 10.0
+  },
   "strategies": {
     "trend_following": {
+      "trades": 102,
+      "win_rate": 28.4,
+      "pnl": -1741.03,
+      "profit_factor": 0.35,
       "timeframe": "1h",
       "symbols_tested": [
         "BTCUSD",
@@ -11,62 +83,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 132,
-      "win_rate": 28.0,
-      "total_pnl": -1799.29,
+      "filter_vetoes": 474,
       "per_symbol": {
         "BTCUSD": {
+          "trades": 21,
+          "win_rate": 38.1,
+          "pnl": -219.63,
+          "profit_factor": 0.56,
           "bars": 877,
-          "trades": 26,
-          "win_rate": 30.8,
-          "pnl": -246.48,
-          "profit_factor": 0.55
+          "filter_vetoes": 87
         },
         "EURUSD": {
+          "trades": 15,
+          "win_rate": 13.3,
+          "pnl": -500.3,
+          "profit_factor": 0.06,
           "bars": 640,
-          "trades": 19,
-          "win_rate": 15.8,
-          "pnl": -551.85,
-          "profit_factor": 0.07
+          "filter_vetoes": 70
         },
         "GOLD": {
-          "bars": 609,
-          "trades": 21,
-          "win_rate": 33.3,
-          "pnl": -256.42,
-          "profit_factor": 0.42
-        },
-        "NVDA": {
-          "bars": 532,
-          "trades": 13,
-          "win_rate": 30.8,
-          "pnl": -60.36,
-          "profit_factor": 0.63
-        },
-        "TSLA": {
-          "bars": 532,
-          "trades": 13,
-          "win_rate": 30.8,
-          "pnl": -88.93,
-          "profit_factor": 0.6
-        },
-        "US100": {
-          "bars": 633,
-          "trades": 25,
-          "win_rate": 24.0,
-          "pnl": -330.92,
-          "profit_factor": 0.4
-        },
-        "US500": {
-          "bars": 633,
           "trades": 15,
           "win_rate": 33.3,
-          "pnl": -264.33,
-          "profit_factor": 0.28
+          "pnl": -213.95,
+          "profit_factor": 0.45,
+          "bars": 609,
+          "filter_vetoes": 96
+        },
+        "NVDA": {
+          "trades": 9,
+          "win_rate": 22.2,
+          "pnl": -83.02,
+          "profit_factor": 0.35,
+          "bars": 532,
+          "filter_vetoes": 59
+        },
+        "TSLA": {
+          "trades": 12,
+          "win_rate": 33.3,
+          "pnl": -168.11,
+          "profit_factor": 0.4,
+          "bars": 532,
+          "filter_vetoes": 27
+        },
+        "US100": {
+          "trades": 18,
+          "win_rate": 22.2,
+          "pnl": -319.92,
+          "profit_factor": 0.37,
+          "bars": 633,
+          "filter_vetoes": 93
+        },
+        "US500": {
+          "trades": 12,
+          "win_rate": 33.3,
+          "pnl": -236.1,
+          "profit_factor": 0.28,
+          "bars": 633,
+          "filter_vetoes": 42
         }
       }
     },
     "mean_reversion": {
+      "trades": 59,
+      "win_rate": 35.6,
+      "pnl": -2449.1,
+      "profit_factor": 0.28,
       "timeframe": "15m",
       "symbols_tested": [
         "BTCUSD",
@@ -77,62 +158,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 67,
-      "win_rate": 32.8,
-      "total_pnl": -2932.3,
+      "filter_vetoes": 25,
       "per_symbol": {
         "BTCUSD": {
+          "trades": 13,
+          "win_rate": 53.8,
+          "pnl": -117.33,
+          "profit_factor": 0.72,
           "bars": 1000,
-          "trades": 12,
-          "win_rate": 58.3,
-          "pnl": -4.25,
-          "profit_factor": 0.98
+          "filter_vetoes": 5
         },
         "EURUSD": {
-          "bars": 854,
-          "trades": 10,
+          "trades": 8,
           "win_rate": 0.0,
-          "pnl": -1003.41,
-          "profit_factor": 0.0
+          "pnl": -772.93,
+          "profit_factor": 0.0,
+          "bars": 854,
+          "filter_vetoes": 4
         },
         "GOLD": {
+          "trades": 6,
+          "win_rate": 33.3,
+          "pnl": -117.64,
+          "profit_factor": 0.38,
           "bars": 819,
-          "trades": 8,
-          "win_rate": 25.0,
-          "pnl": -273.84,
-          "profit_factor": 0.25
+          "filter_vetoes": 5
         },
         "NVDA": {
-          "bars": 517,
-          "trades": 9,
-          "win_rate": 33.3,
-          "pnl": -650.81,
-          "profit_factor": 0.13
-        },
-        "TSLA": {
-          "bars": 517,
-          "trades": 12,
-          "win_rate": 33.3,
-          "pnl": -652.99,
-          "profit_factor": 0.28
-        },
-        "US100": {
-          "bars": 846,
-          "trades": 9,
-          "win_rate": 33.3,
-          "pnl": -217.28,
-          "profit_factor": 0.43
-        },
-        "US500": {
-          "bars": 846,
           "trades": 7,
           "win_rate": 42.9,
-          "pnl": -129.73,
-          "profit_factor": 0.46
+          "pnl": -519.41,
+          "profit_factor": 0.16,
+          "bars": 517,
+          "filter_vetoes": 5
+        },
+        "TSLA": {
+          "trades": 11,
+          "win_rate": 36.4,
+          "pnl": -609.41,
+          "profit_factor": 0.3,
+          "bars": 517,
+          "filter_vetoes": 1
+        },
+        "US100": {
+          "trades": 9,
+          "win_rate": 33.3,
+          "pnl": -210.19,
+          "profit_factor": 0.44,
+          "bars": 846,
+          "filter_vetoes": 1
+        },
+        "US500": {
+          "trades": 5,
+          "win_rate": 40.0,
+          "pnl": -102.21,
+          "profit_factor": 0.43,
+          "bars": 846,
+          "filter_vetoes": 4
         }
       }
     },
     "cci_macd": {
+      "trades": 135,
+      "win_rate": 25.9,
+      "pnl": -4912.92,
+      "profit_factor": 0.26,
       "timeframe": "15m",
       "symbols_tested": [
         "BTCUSD",
@@ -143,62 +233,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 225,
-      "win_rate": 22.2,
-      "total_pnl": -7919.24,
+      "filter_vetoes": 490,
       "per_symbol": {
         "BTCUSD": {
+          "trades": 22,
+          "win_rate": 27.3,
+          "pnl": -577.21,
+          "profit_factor": 0.33,
           "bars": 1000,
-          "trades": 42,
-          "win_rate": 26.2,
-          "pnl": -1121.64,
-          "profit_factor": 0.27
+          "filter_vetoes": 95
         },
         "EURUSD": {
+          "trades": 22,
+          "win_rate": 4.5,
+          "pnl": -1876.46,
+          "profit_factor": 0.01,
           "bars": 854,
-          "trades": 36,
-          "win_rate": 5.6,
-          "pnl": -2911.0,
-          "profit_factor": 0.01
+          "filter_vetoes": 97
         },
         "GOLD": {
+          "trades": 22,
+          "win_rate": 31.8,
+          "pnl": -517.86,
+          "profit_factor": 0.35,
           "bars": 819,
-          "trades": 32,
-          "win_rate": 25.0,
-          "pnl": -737.83,
-          "profit_factor": 0.32
+          "filter_vetoes": 65
         },
         "NVDA": {
+          "trades": 14,
+          "win_rate": 21.4,
+          "pnl": -504.94,
+          "profit_factor": 0.28,
           "bars": 517,
-          "trades": 21,
-          "win_rate": 23.8,
-          "pnl": -357.47,
-          "profit_factor": 0.56
+          "filter_vetoes": 42
         },
         "TSLA": {
+          "trades": 17,
+          "win_rate": 35.3,
+          "pnl": -308.14,
+          "profit_factor": 0.61,
           "bars": 517,
-          "trades": 27,
-          "win_rate": 22.2,
-          "pnl": -820.9,
-          "profit_factor": 0.36
+          "filter_vetoes": 29
         },
         "US100": {
+          "trades": 18,
+          "win_rate": 38.9,
+          "pnl": -354.76,
+          "profit_factor": 0.47,
           "bars": 846,
-          "trades": 32,
-          "win_rate": 28.1,
-          "pnl": -733.21,
-          "profit_factor": 0.34
+          "filter_vetoes": 73
         },
         "US500": {
+          "trades": 20,
+          "win_rate": 25.0,
+          "pnl": -773.55,
+          "profit_factor": 0.15,
           "bars": 846,
-          "trades": 35,
-          "win_rate": 25.7,
-          "pnl": -1237.18,
-          "profit_factor": 0.14
+          "filter_vetoes": 89
         }
       }
     },
     "parsar_cci_ema_m1": {
+      "trades": 125,
+      "win_rate": 20.8,
+      "pnl": -9507.05,
+      "profit_factor": 0.1,
       "timeframe": "1m",
       "symbols_tested": [
         "BTCUSD",
@@ -209,62 +308,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 156,
-      "win_rate": 16.7,
-      "total_pnl": -10271.98,
+      "filter_vetoes": 159,
       "per_symbol": {
         "BTCUSD": {
-          "bars": 1000,
-          "trades": 25,
-          "win_rate": 20.0,
-          "pnl": -1499.39,
-          "profit_factor": 0.07
-        },
-        "EURUSD": {
-          "bars": 1000,
-          "trades": 15,
-          "win_rate": 0.0,
-          "pnl": -4020.74,
-          "profit_factor": 0.0
-        },
-        "GOLD": {
-          "bars": 1000,
-          "trades": 26,
-          "win_rate": 15.4,
-          "pnl": -1418.66,
-          "profit_factor": 0.09
-        },
-        "NVDA": {
-          "bars": 1000,
-          "trades": 24,
-          "win_rate": 41.7,
-          "pnl": -256.57,
-          "profit_factor": 0.63
-        },
-        "TSLA": {
-          "bars": 1000,
           "trades": 21,
           "win_rate": 19.0,
-          "pnl": -498.66,
-          "profit_factor": 0.37
+          "pnl": -1368.25,
+          "profit_factor": 0.08,
+          "bars": 1000,
+          "filter_vetoes": 18
+        },
+        "EURUSD": {
+          "trades": 9,
+          "win_rate": 0.0,
+          "pnl": -3858.86,
+          "profit_factor": 0.0,
+          "bars": 1000,
+          "filter_vetoes": 27
+        },
+        "GOLD": {
+          "trades": 21,
+          "win_rate": 19.0,
+          "pnl": -1148.18,
+          "profit_factor": 0.11,
+          "bars": 1000,
+          "filter_vetoes": 25
+        },
+        "NVDA": {
+          "trades": 17,
+          "win_rate": 58.8,
+          "pnl": 13.12,
+          "profit_factor": 1.03,
+          "bars": 1000,
+          "filter_vetoes": 24
+        },
+        "TSLA": {
+          "trades": 19,
+          "win_rate": 21.1,
+          "pnl": -637.37,
+          "profit_factor": 0.32,
+          "bars": 1000,
+          "filter_vetoes": 19
         },
         "US100": {
+          "trades": 18,
+          "win_rate": 22.2,
+          "pnl": -770.61,
+          "profit_factor": 0.07,
           "bars": 1000,
-          "trades": 22,
-          "win_rate": 13.6,
-          "pnl": -859.14,
-          "profit_factor": 0.06
+          "filter_vetoes": 19
         },
         "US500": {
-          "bars": 1000,
-          "trades": 23,
+          "trades": 20,
           "win_rate": 0.0,
-          "pnl": -1718.82,
-          "profit_factor": 0.0
+          "pnl": -1736.91,
+          "profit_factor": 0.0,
+          "bars": 1000,
+          "filter_vetoes": 27
         }
       }
     },
     "parsar_cci_ema_m5": {
+      "trades": 63,
+      "win_rate": 28.6,
+      "pnl": -2649.35,
+      "profit_factor": 0.21,
       "timeframe": "5m",
       "symbols_tested": [
         "BTCUSD",
@@ -275,62 +383,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 115,
-      "win_rate": 20.9,
-      "total_pnl": -4334.67,
+      "filter_vetoes": 208,
       "per_symbol": {
         "BTCUSD": {
+          "trades": 12,
+          "win_rate": 25.0,
+          "pnl": -426.57,
+          "profit_factor": 0.29,
           "bars": 1000,
-          "trades": 17,
-          "win_rate": 11.8,
-          "pnl": -627.61,
-          "profit_factor": 0.18
+          "filter_vetoes": 18
         },
         "EURUSD": {
-          "bars": 1000,
-          "trades": 16,
+          "trades": 10,
           "win_rate": 0.0,
-          "pnl": -1653.96,
-          "profit_factor": 0.0
+          "pnl": -1169.69,
+          "profit_factor": 0.0,
+          "bars": 1000,
+          "filter_vetoes": 16
         },
         "GOLD": {
+          "trades": 9,
+          "win_rate": 55.6,
+          "pnl": -38.59,
+          "profit_factor": 0.8,
           "bars": 1000,
-          "trades": 19,
-          "win_rate": 42.1,
-          "pnl": -235.23,
-          "profit_factor": 0.48
+          "filter_vetoes": 42
         },
         "NVDA": {
+          "trades": 8,
+          "win_rate": 37.5,
+          "pnl": -159.51,
+          "profit_factor": 0.46,
           "bars": 744,
-          "trades": 15,
-          "win_rate": 26.7,
-          "pnl": -320.42,
-          "profit_factor": 0.35
+          "filter_vetoes": 18
         },
         "TSLA": {
+          "trades": 5,
+          "win_rate": 60.0,
+          "pnl": 40.74,
+          "profit_factor": 1.59,
           "bars": 744,
-          "trades": 11,
-          "win_rate": 27.3,
-          "pnl": -141.87,
-          "profit_factor": 0.43
+          "filter_vetoes": 30
         },
         "US100": {
+          "trades": 10,
+          "win_rate": 40.0,
+          "pnl": -228.05,
+          "profit_factor": 0.34,
           "bars": 1000,
-          "trades": 19,
-          "win_rate": 26.3,
-          "pnl": -430.0,
-          "profit_factor": 0.25
+          "filter_vetoes": 36
         },
         "US500": {
+          "trades": 9,
+          "win_rate": 0.0,
+          "pnl": -667.67,
+          "profit_factor": 0.0,
           "bars": 1000,
-          "trades": 18,
-          "win_rate": 11.1,
-          "pnl": -925.59,
-          "profit_factor": 0.01
+          "filter_vetoes": 48
         }
       }
     },
     "bb_macd_sma": {
+      "trades": 165,
+      "win_rate": 25.5,
+      "pnl": -4083.08,
+      "profit_factor": 0.34,
       "timeframe": "15m",
       "symbols_tested": [
         "BTCUSD",
@@ -341,62 +458,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 343,
-      "win_rate": 17.2,
-      "total_pnl": -9685.56,
+      "filter_vetoes": 1514,
       "per_symbol": {
         "BTCUSD": {
+          "trades": 33,
+          "win_rate": 21.2,
+          "pnl": -751.53,
+          "profit_factor": 0.32,
           "bars": 1000,
-          "trades": 62,
-          "win_rate": 17.7,
-          "pnl": -1516.79,
-          "profit_factor": 0.22
+          "filter_vetoes": 289
         },
         "EURUSD": {
+          "trades": 21,
+          "win_rate": 4.8,
+          "pnl": -1611.85,
+          "profit_factor": 0.02,
           "bars": 854,
-          "trades": 52,
-          "win_rate": 5.8,
-          "pnl": -3486.2,
-          "profit_factor": 0.01
+          "filter_vetoes": 278
         },
         "GOLD": {
+          "trades": 26,
+          "win_rate": 26.9,
+          "pnl": -540.0,
+          "profit_factor": 0.34,
           "bars": 819,
-          "trades": 61,
-          "win_rate": 16.4,
-          "pnl": -1166.28,
-          "profit_factor": 0.26
+          "filter_vetoes": 235
         },
         "NVDA": {
+          "trades": 17,
+          "win_rate": 23.5,
+          "pnl": -264.39,
+          "profit_factor": 0.51,
           "bars": 517,
-          "trades": 23,
-          "win_rate": 26.1,
-          "pnl": -30.62,
-          "profit_factor": 0.95
+          "filter_vetoes": 117
         },
         "TSLA": {
+          "trades": 22,
+          "win_rate": 40.9,
+          "pnl": 25.61,
+          "profit_factor": 1.04,
           "bars": 517,
-          "trades": 41,
-          "win_rate": 24.4,
-          "pnl": -748.32,
-          "profit_factor": 0.45
+          "filter_vetoes": 90
         },
         "US100": {
+          "trades": 26,
+          "win_rate": 34.6,
+          "pnl": -355.71,
+          "profit_factor": 0.47,
           "bars": 846,
-          "trades": 53,
-          "win_rate": 17.0,
-          "pnl": -1126.8,
-          "profit_factor": 0.26
+          "filter_vetoes": 257
         },
         "US500": {
+          "trades": 20,
+          "win_rate": 25.0,
+          "pnl": -585.21,
+          "profit_factor": 0.21,
           "bars": 846,
-          "trades": 51,
-          "win_rate": 19.6,
-          "pnl": -1610.54,
-          "profit_factor": 0.1
+          "filter_vetoes": 248
         }
       }
     },
     "bb_macd_sma_app": {
+      "trades": 33,
+      "win_rate": 30.3,
+      "pnl": -635.27,
+      "profit_factor": 0.45,
       "timeframe": "15m",
       "symbols_tested": [
         "BTCUSD",
@@ -407,62 +533,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 67,
-      "win_rate": 34.3,
-      "total_pnl": -981.45,
+      "filter_vetoes": 79,
       "per_symbol": {
         "BTCUSD": {
+          "trades": 5,
+          "win_rate": 60.0,
+          "pnl": 12.75,
+          "profit_factor": 1.14,
           "bars": 1000,
-          "trades": 9,
-          "win_rate": 44.4,
-          "pnl": -17.57,
-          "profit_factor": 0.9
+          "filter_vetoes": 14
         },
         "EURUSD": {
+          "trades": 5,
+          "win_rate": 0.0,
+          "pnl": -376.41,
+          "profit_factor": 0.0,
           "bars": 854,
-          "trades": 13,
-          "win_rate": 7.7,
-          "pnl": -673.83,
-          "profit_factor": 0.01
+          "filter_vetoes": 16
         },
         "GOLD": {
+          "trades": 2,
+          "win_rate": 0.0,
+          "pnl": -27.49,
+          "profit_factor": 0.0,
           "bars": 819,
-          "trades": 9,
-          "win_rate": 11.1,
-          "pnl": -216.47,
-          "profit_factor": 0.15
+          "filter_vetoes": 16
         },
         "NVDA": {
+          "trades": 3,
+          "win_rate": 66.7,
+          "pnl": 134.71,
+          "profit_factor": 3.63,
           "bars": 517,
-          "trades": 6,
-          "win_rate": 50.0,
-          "pnl": 99.34,
-          "profit_factor": 2.09
+          "filter_vetoes": 5
         },
         "TSLA": {
+          "trades": 4,
+          "win_rate": 50.0,
+          "pnl": 75.31,
+          "profit_factor": 2.13,
           "bars": 517,
-          "trades": 8,
-          "win_rate": 62.5,
-          "pnl": 15.86,
-          "profit_factor": 1.11
+          "filter_vetoes": 6
         },
         "US100": {
+          "trades": 6,
+          "win_rate": 33.3,
+          "pnl": -120.23,
+          "profit_factor": 0.37,
           "bars": 846,
-          "trades": 11,
-          "win_rate": 45.5,
-          "pnl": -50.88,
-          "profit_factor": 0.77
+          "filter_vetoes": 10
         },
         "US500": {
+          "trades": 8,
+          "win_rate": 12.5,
+          "pnl": -333.9,
+          "profit_factor": 0.05,
           "bars": 846,
-          "trades": 11,
-          "win_rate": 36.4,
-          "pnl": -137.9,
-          "profit_factor": 0.44
+          "filter_vetoes": 12
         }
       }
     },
     "cci200_ema_pivot": {
+      "trades": 71,
+      "win_rate": 22.5,
+      "pnl": -1715.22,
+      "profit_factor": 0.25,
       "timeframe": "15m",
       "symbols_tested": [
         "BTCUSD",
@@ -473,62 +608,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 93,
-      "win_rate": 21.5,
-      "total_pnl": -1733.38,
+      "filter_vetoes": 431,
       "per_symbol": {
         "BTCUSD": {
+          "trades": 8,
+          "win_rate": 25.0,
+          "pnl": -142.89,
+          "profit_factor": 0.22,
           "bars": 1000,
-          "trades": 15,
-          "win_rate": 20.0,
-          "pnl": -268.46,
-          "profit_factor": 0.27
+          "filter_vetoes": 78
         },
         "EURUSD": {
+          "trades": 13,
+          "win_rate": 0.0,
+          "pnl": -827.45,
+          "profit_factor": 0.0,
           "bars": 854,
-          "trades": 12,
-          "win_rate": 8.3,
-          "pnl": -621.61,
-          "profit_factor": 0.01
+          "filter_vetoes": 87
         },
         "GOLD": {
+          "trades": 8,
+          "win_rate": 25.0,
+          "pnl": -143.36,
+          "profit_factor": 0.31,
           "bars": 819,
-          "trades": 13,
-          "win_rate": 23.1,
-          "pnl": -221.01,
-          "profit_factor": 0.26
+          "filter_vetoes": 87
         },
         "NVDA": {
+          "trades": 8,
+          "win_rate": 12.5,
+          "pnl": -220.08,
+          "profit_factor": 0.14,
           "bars": 517,
-          "trades": 9,
-          "win_rate": 22.2,
-          "pnl": -100.56,
-          "profit_factor": 0.5
+          "filter_vetoes": 34
         },
         "TSLA": {
+          "trades": 6,
+          "win_rate": 50.0,
+          "pnl": 117.89,
+          "profit_factor": 2.84,
           "bars": 517,
-          "trades": 11,
-          "win_rate": 27.3,
-          "pnl": -44.05,
-          "profit_factor": 0.79
+          "filter_vetoes": 27
         },
         "US100": {
+          "trades": 14,
+          "win_rate": 35.7,
+          "pnl": -140.62,
+          "profit_factor": 0.55,
           "bars": 846,
-          "trades": 19,
-          "win_rate": 21.1,
-          "pnl": -211.97,
-          "profit_factor": 0.43
+          "filter_vetoes": 66
         },
         "US500": {
-          "bars": 846,
           "trades": 14,
-          "win_rate": 28.6,
-          "pnl": -265.72,
-          "profit_factor": 0.27
+          "win_rate": 21.4,
+          "pnl": -358.71,
+          "profit_factor": 0.17,
+          "bars": 846,
+          "filter_vetoes": 52
         }
       }
     },
     "cci200_ema_pivot_app": {
+      "trades": 73,
+      "win_rate": 21.9,
+      "pnl": -1690.07,
+      "profit_factor": 0.25,
       "timeframe": "15m",
       "symbols_tested": [
         "BTCUSD",
@@ -539,62 +683,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 106,
-      "win_rate": 23.6,
-      "total_pnl": -1928.69,
+      "filter_vetoes": 705,
       "per_symbol": {
         "BTCUSD": {
+          "trades": 9,
+          "win_rate": 22.2,
+          "pnl": -171.28,
+          "profit_factor": 0.19,
           "bars": 1000,
-          "trades": 20,
-          "win_rate": 20.0,
-          "pnl": -383.18,
-          "profit_factor": 0.25
+          "filter_vetoes": 131
         },
         "EURUSD": {
-          "bars": 854,
           "trades": 13,
-          "win_rate": 15.4,
-          "pnl": -664.58,
-          "profit_factor": 0.04
+          "win_rate": 0.0,
+          "pnl": -819.75,
+          "profit_factor": 0.0,
+          "bars": 854,
+          "filter_vetoes": 147
         },
         "GOLD": {
-          "bars": 819,
-          "trades": 17,
-          "win_rate": 29.4,
-          "pnl": -221.56,
-          "profit_factor": 0.38
-        },
-        "NVDA": {
-          "bars": 517,
           "trades": 8,
           "win_rate": 25.0,
-          "pnl": -55.43,
-          "profit_factor": 0.68
+          "pnl": -165.3,
+          "profit_factor": 0.28,
+          "bars": 819,
+          "filter_vetoes": 153
+        },
+        "NVDA": {
+          "trades": 7,
+          "win_rate": 14.3,
+          "pnl": -144.57,
+          "profit_factor": 0.21,
+          "bars": 517,
+          "filter_vetoes": 27
         },
         "TSLA": {
+          "trades": 6,
+          "win_rate": 50.0,
+          "pnl": 114.62,
+          "profit_factor": 2.79,
           "bars": 517,
-          "trades": 11,
-          "win_rate": 36.4,
-          "pnl": 26.78,
-          "profit_factor": 1.15
+          "filter_vetoes": 43
         },
         "US100": {
+          "trades": 17,
+          "win_rate": 29.4,
+          "pnl": -205.68,
+          "profit_factor": 0.46,
           "bars": 846,
-          "trades": 22,
-          "win_rate": 18.2,
-          "pnl": -322.3,
-          "profit_factor": 0.34
+          "filter_vetoes": 121
         },
         "US500": {
+          "trades": 13,
+          "win_rate": 23.1,
+          "pnl": -298.12,
+          "profit_factor": 0.17,
           "bars": 846,
-          "trades": 15,
-          "win_rate": 26.7,
-          "pnl": -308.42,
-          "profit_factor": 0.22
+          "filter_vetoes": 83
         }
       }
     },
     "ema_stoch_rsi": {
+      "trades": 182,
+      "win_rate": 31.9,
+      "pnl": -1457.66,
+      "profit_factor": 0.56,
       "timeframe": "1h",
       "symbols_tested": [
         "BTCUSD",
@@ -605,62 +758,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 264,
-      "win_rate": 28.8,
-      "total_pnl": -2161.92,
+      "filter_vetoes": 248,
       "per_symbol": {
         "BTCUSD": {
+          "trades": 38,
+          "win_rate": 28.9,
+          "pnl": -180.82,
+          "profit_factor": 0.64,
           "bars": 877,
-          "trades": 55,
-          "win_rate": 29.1,
-          "pnl": -290.06,
-          "profit_factor": 0.61
+          "filter_vetoes": 60
         },
         "EURUSD": {
+          "trades": 26,
+          "win_rate": 26.9,
+          "pnl": -480.07,
+          "profit_factor": 0.32,
           "bars": 640,
-          "trades": 38,
-          "win_rate": 21.1,
-          "pnl": -838.92,
-          "profit_factor": 0.22
+          "filter_vetoes": 37
         },
         "GOLD": {
+          "trades": 26,
+          "win_rate": 30.8,
+          "pnl": -229.73,
+          "profit_factor": 0.55,
           "bars": 609,
-          "trades": 39,
-          "win_rate": 28.2,
-          "pnl": -387.83,
-          "profit_factor": 0.47
+          "filter_vetoes": 32
         },
         "NVDA": {
+          "trades": 17,
+          "win_rate": 41.2,
+          "pnl": -78.01,
+          "profit_factor": 0.72,
           "bars": 532,
-          "trades": 31,
-          "win_rate": 35.5,
-          "pnl": -76.56,
-          "profit_factor": 0.82
+          "filter_vetoes": 35
         },
         "TSLA": {
+          "trades": 22,
+          "win_rate": 40.9,
+          "pnl": -49.29,
+          "profit_factor": 0.87,
           "bars": 532,
-          "trades": 26,
-          "win_rate": 38.5,
-          "pnl": -22.67,
-          "profit_factor": 0.94
+          "filter_vetoes": 14
         },
         "US100": {
+          "trades": 22,
+          "win_rate": 40.9,
+          "pnl": 93.41,
+          "profit_factor": 1.46,
           "bars": 633,
-          "trades": 39,
-          "win_rate": 30.8,
-          "pnl": -74.87,
-          "profit_factor": 0.83
+          "filter_vetoes": 47
         },
         "US500": {
+          "trades": 31,
+          "win_rate": 22.6,
+          "pnl": -533.13,
+          "profit_factor": 0.3,
           "bars": 633,
-          "trades": 36,
-          "win_rate": 22.2,
-          "pnl": -471.0,
-          "profit_factor": 0.33
+          "filter_vetoes": 23
         }
       }
     },
     "cci_reversal": {
+      "trades": 55,
+      "win_rate": 38.2,
+      "pnl": -506.37,
+      "profit_factor": 0.59,
       "timeframe": "1h",
       "symbols_tested": [
         "BTCUSD",
@@ -671,62 +833,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 79,
-      "win_rate": 38.0,
-      "total_pnl": -605.22,
+      "filter_vetoes": 36,
       "per_symbol": {
         "BTCUSD": {
+          "trades": 9,
+          "win_rate": 55.6,
+          "pnl": 24.92,
+          "profit_factor": 1.18,
           "bars": 877,
-          "trades": 12,
-          "win_rate": 50.0,
-          "pnl": -44.39,
-          "profit_factor": 0.83
+          "filter_vetoes": 5
         },
         "EURUSD": {
+          "trades": 9,
+          "win_rate": 33.3,
+          "pnl": -212.62,
+          "profit_factor": 0.32,
           "bars": 640,
-          "trades": 11,
-          "win_rate": 18.2,
-          "pnl": -364.09,
-          "profit_factor": 0.07
+          "filter_vetoes": 3
         },
         "GOLD": {
+          "trades": 8,
+          "win_rate": 37.5,
+          "pnl": 9.3,
+          "profit_factor": 1.11,
           "bars": 609,
-          "trades": 13,
-          "win_rate": 46.2,
-          "pnl": 59.84,
-          "profit_factor": 1.38
+          "filter_vetoes": 7
         },
         "NVDA": {
+          "trades": 8,
+          "win_rate": 0.0,
+          "pnl": -238.85,
+          "profit_factor": 0.0,
           "bars": 532,
-          "trades": 12,
-          "win_rate": 16.7,
-          "pnl": -196.06,
-          "profit_factor": 0.32
+          "filter_vetoes": 6
         },
         "TSLA": {
+          "trades": 8,
+          "win_rate": 62.5,
+          "pnl": 135.4,
+          "profit_factor": 2.14,
           "bars": 532,
-          "trades": 10,
-          "win_rate": 60.0,
-          "pnl": 242.9,
-          "profit_factor": 2.97
+          "filter_vetoes": 3
         },
         "US100": {
+          "trades": 5,
+          "win_rate": 60.0,
+          "pnl": 12.63,
+          "profit_factor": 1.19,
           "bars": 633,
-          "trades": 10,
-          "win_rate": 50.0,
-          "pnl": -74.6,
-          "profit_factor": 0.68
+          "filter_vetoes": 8
         },
         "US500": {
+          "trades": 8,
+          "win_rate": 25.0,
+          "pnl": -237.15,
+          "profit_factor": 0.09,
           "bars": 633,
-          "trades": 11,
-          "win_rate": 27.3,
-          "pnl": -228.83,
-          "profit_factor": 0.22
+          "filter_vetoes": 4
         }
       }
     },
     "adx_momentum_ema": {
+      "trades": 120,
+      "win_rate": 25.0,
+      "pnl": -2908.23,
+      "profit_factor": 0.3,
       "timeframe": "15m",
       "symbols_tested": [
         "BTCUSD",
@@ -737,62 +908,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 162,
-      "win_rate": 22.2,
-      "total_pnl": -3877.64,
+      "filter_vetoes": 251,
       "per_symbol": {
         "BTCUSD": {
+          "trades": 18,
+          "win_rate": 22.2,
+          "pnl": -355.86,
+          "profit_factor": 0.29,
           "bars": 1000,
-          "trades": 30,
-          "win_rate": 16.7,
-          "pnl": -642.19,
-          "profit_factor": 0.19
+          "filter_vetoes": 60
         },
         "EURUSD": {
+          "trades": 14,
+          "win_rate": 7.1,
+          "pnl": -1015.85,
+          "profit_factor": 0.02,
           "bars": 854,
-          "trades": 19,
-          "win_rate": 10.5,
-          "pnl": -1285.7,
-          "profit_factor": 0.01
+          "filter_vetoes": 42
         },
         "GOLD": {
+          "trades": 14,
+          "win_rate": 28.6,
+          "pnl": -279.47,
+          "profit_factor": 0.3,
           "bars": 819,
-          "trades": 23,
-          "win_rate": 21.7,
-          "pnl": -420.27,
-          "profit_factor": 0.25
+          "filter_vetoes": 43
         },
         "NVDA": {
+          "trades": 15,
+          "win_rate": 13.3,
+          "pnl": -336.96,
+          "profit_factor": 0.33,
           "bars": 517,
-          "trades": 16,
-          "win_rate": 18.8,
-          "pnl": -222.38,
-          "profit_factor": 0.5
+          "filter_vetoes": 23
         },
         "TSLA": {
+          "trades": 18,
+          "win_rate": 33.3,
+          "pnl": -164.71,
+          "profit_factor": 0.7,
           "bars": 517,
-          "trades": 24,
-          "win_rate": 25.0,
-          "pnl": -328.46,
-          "profit_factor": 0.54
+          "filter_vetoes": 9
         },
         "US100": {
+          "trades": 22,
+          "win_rate": 31.8,
+          "pnl": -326.32,
+          "profit_factor": 0.46,
           "bars": 846,
-          "trades": 26,
-          "win_rate": 30.8,
-          "pnl": -397.2,
-          "profit_factor": 0.43
+          "filter_vetoes": 32
         },
         "US500": {
+          "trades": 19,
+          "win_rate": 31.6,
+          "pnl": -429.05,
+          "profit_factor": 0.26,
           "bars": 846,
-          "trades": 24,
-          "win_rate": 29.2,
-          "pnl": -581.44,
-          "profit_factor": 0.21
+          "filter_vetoes": 42
         }
       }
     },
     "bb_rsi_cutting": {
+      "trades": 33,
+      "win_rate": 42.4,
+      "pnl": -642.49,
+      "profit_factor": 0.34,
       "timeframe": "15m",
       "symbols_tested": [
         "BTCUSD",
@@ -803,62 +983,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 52,
-      "win_rate": 36.5,
-      "total_pnl": -1099.48,
+      "filter_vetoes": 23,
       "per_symbol": {
         "BTCUSD": {
+          "trades": 8,
+          "win_rate": 62.5,
+          "pnl": -16.68,
+          "profit_factor": 0.86,
           "bars": 1000,
-          "trades": 12,
-          "win_rate": 50.0,
-          "pnl": -125.38,
-          "profit_factor": 0.51
+          "filter_vetoes": 4
         },
         "EURUSD": {
+          "trades": 3,
+          "win_rate": 0.0,
+          "pnl": -125.49,
+          "profit_factor": 0.0,
           "bars": 854,
-          "trades": 6,
-          "win_rate": 16.7,
-          "pnl": -184.35,
-          "profit_factor": 0.01
+          "filter_vetoes": 5
         },
         "GOLD": {
+          "trades": 8,
+          "win_rate": 37.5,
+          "pnl": -98.06,
+          "profit_factor": 0.5,
           "bars": 819,
-          "trades": 13,
-          "win_rate": 46.2,
-          "pnl": -72.45,
-          "profit_factor": 0.73
+          "filter_vetoes": 6
         },
         "NVDA": {
+          "trades": 3,
+          "win_rate": 66.7,
+          "pnl": -143.45,
+          "profit_factor": 0.26,
           "bars": 517,
-          "trades": 5,
-          "win_rate": 40.0,
-          "pnl": -247.57,
-          "profit_factor": 0.05
+          "filter_vetoes": 3
         },
         "TSLA": {
+          "trades": 3,
+          "win_rate": 33.3,
+          "pnl": -136.92,
+          "profit_factor": 0.05,
           "bars": 517,
-          "trades": 5,
-          "win_rate": 20.0,
-          "pnl": -206.53,
-          "profit_factor": 0.03
+          "filter_vetoes": 2
         },
         "US100": {
+          "trades": 4,
+          "win_rate": 50.0,
+          "pnl": -53.56,
+          "profit_factor": 0.41,
           "bars": 846,
-          "trades": 5,
-          "win_rate": 40.0,
-          "pnl": -91.13,
-          "profit_factor": 0.29
+          "filter_vetoes": 1
         },
         "US500": {
+          "trades": 4,
+          "win_rate": 25.0,
+          "pnl": -68.33,
+          "profit_factor": 0.34,
           "bars": 846,
-          "trades": 6,
-          "win_rate": 16.7,
-          "pnl": -172.07,
-          "profit_factor": 0.17
+          "filter_vetoes": 2
         }
       }
     },
     "ao_macd": {
+      "trades": 185,
+      "win_rate": 38.9,
+      "pnl": 52.56,
+      "profit_factor": 1.02,
       "timeframe": "4h",
       "symbols_tested": [
         "BTCUSD",
@@ -869,62 +1058,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 224,
-      "win_rate": 40.6,
-      "total_pnl": 230.1,
+      "filter_vetoes": 557,
       "per_symbol": {
         "BTCUSD": {
+          "trades": 41,
+          "win_rate": 39.0,
+          "pnl": 5.99,
+          "profit_factor": 1.01,
           "bars": 858,
-          "trades": 44,
-          "win_rate": 40.9,
-          "pnl": 62.27,
-          "profit_factor": 1.14
+          "filter_vetoes": 87
         },
         "EURUSD": {
+          "trades": 22,
+          "win_rate": 36.4,
+          "pnl": -138.15,
+          "profit_factor": 0.62,
           "bars": 640,
-          "trades": 30,
-          "win_rate": 30.0,
-          "pnl": -295.75,
-          "profit_factor": 0.43
+          "filter_vetoes": 107
         },
         "GOLD": {
-          "bars": 636,
-          "trades": 35,
-          "win_rate": 42.9,
-          "pnl": 12.84,
-          "profit_factor": 1.03
-        },
-        "NVDA": {
-          "bars": 556,
-          "trades": 27,
-          "win_rate": 44.4,
-          "pnl": 64.88,
-          "profit_factor": 1.2
-        },
-        "TSLA": {
-          "bars": 556,
           "trades": 27,
           "win_rate": 40.7,
-          "pnl": 179.86,
-          "profit_factor": 1.64
+          "pnl": 2.15,
+          "profit_factor": 1.01,
+          "bars": 636,
+          "filter_vetoes": 66
+        },
+        "NVDA": {
+          "trades": 20,
+          "win_rate": 45.0,
+          "pnl": -21.36,
+          "profit_factor": 0.89,
+          "bars": 556,
+          "filter_vetoes": 65
+        },
+        "TSLA": {
+          "trades": 23,
+          "win_rate": 43.5,
+          "pnl": 211.23,
+          "profit_factor": 1.9,
+          "bars": 556,
+          "filter_vetoes": 71
         },
         "US100": {
+          "trades": 26,
+          "win_rate": 34.6,
+          "pnl": -2.85,
+          "profit_factor": 0.99,
           "bars": 636,
-          "trades": 33,
-          "win_rate": 45.5,
-          "pnl": 153.33,
-          "profit_factor": 1.43
+          "filter_vetoes": 92
         },
         "US500": {
+          "trades": 26,
+          "win_rate": 34.6,
+          "pnl": -4.46,
+          "profit_factor": 0.99,
           "bars": 636,
-          "trades": 28,
-          "win_rate": 39.3,
-          "pnl": 52.66,
-          "profit_factor": 1.17
+          "filter_vetoes": 69
         }
       }
     },
     "ao_macd_app": {
+      "trades": 21,
+      "win_rate": 19.0,
+      "pnl": -350.2,
+      "profit_factor": 0.35,
       "timeframe": "4h",
       "symbols_tested": [
         "BTCUSD",
@@ -935,62 +1133,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 29,
-      "win_rate": 17.2,
-      "total_pnl": -542.56,
+      "filter_vetoes": 9,
       "per_symbol": {
         "BTCUSD": {
+          "trades": 9,
+          "win_rate": 22.2,
+          "pnl": -92.72,
+          "profit_factor": 0.56,
           "bars": 858,
-          "trades": 10,
-          "win_rate": 20.0,
-          "pnl": -134.72,
-          "profit_factor": 0.47
+          "filter_vetoes": 1
         },
         "EURUSD": {
-          "bars": 640,
-          "trades": 3,
+          "trades": 2,
           "win_rate": 0.0,
-          "pnl": -119.34,
-          "profit_factor": 0.0
+          "pnl": -78.8,
+          "profit_factor": 0.0,
+          "bars": 640,
+          "filter_vetoes": 1
         },
         "GOLD": {
+          "trades": 2,
+          "win_rate": 50.0,
+          "pnl": 9.14,
+          "profit_factor": 1.32,
           "bars": 636,
-          "trades": 3,
-          "win_rate": 33.3,
-          "pnl": -19.27,
-          "profit_factor": 0.66
+          "filter_vetoes": 1
         },
         "NVDA": {
-          "bars": 556,
-          "trades": 5,
+          "trades": 4,
           "win_rate": 0.0,
-          "pnl": -187.55,
-          "profit_factor": 0.0
+          "pnl": -144.78,
+          "profit_factor": 0.0,
+          "bars": 556,
+          "filter_vetoes": 1
         },
         "TSLA": {
+          "trades": 0,
+          "win_rate": null,
+          "pnl": 0.0,
+          "profit_factor": null,
           "bars": 556,
-          "trades": 1,
-          "win_rate": 0.0,
-          "pnl": -42.1,
-          "profit_factor": 0.0
+          "filter_vetoes": 1
         },
         "US100": {
+          "trades": 1,
+          "win_rate": 0.0,
+          "pnl": -36.11,
+          "profit_factor": 0.0,
           "bars": 636,
-          "trades": 3,
-          "win_rate": 33.3,
-          "pnl": -3.89,
-          "profit_factor": 0.92
+          "filter_vetoes": 3
         },
         "US500": {
+          "trades": 3,
+          "win_rate": 33.3,
+          "pnl": -6.94,
+          "profit_factor": 0.84,
           "bars": 636,
-          "trades": 4,
-          "win_rate": 25.0,
-          "pnl": -35.69,
-          "profit_factor": 0.51
+          "filter_vetoes": 1
         }
       }
     },
     "bb_rsi": {
+      "trades": 59,
+      "win_rate": 32.2,
+      "pnl": -1010.82,
+      "profit_factor": 0.46,
       "timeframe": "15m",
       "symbols_tested": [
         "BTCUSD",
@@ -1001,62 +1208,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 69,
-      "win_rate": 34.8,
-      "total_pnl": -1014.66,
+      "filter_vetoes": 30,
       "per_symbol": {
         "BTCUSD": {
+          "trades": 13,
+          "win_rate": 23.1,
+          "pnl": -371.81,
+          "profit_factor": 0.21,
           "bars": 1000,
-          "trades": 12,
-          "win_rate": 33.3,
-          "pnl": -232.18,
-          "profit_factor": 0.35
+          "filter_vetoes": 5
         },
         "EURUSD": {
+          "trades": 7,
+          "win_rate": 14.3,
+          "pnl": -340.08,
+          "profit_factor": 0.01,
           "bars": 854,
-          "trades": 10,
-          "win_rate": 20.0,
-          "pnl": -459.64,
-          "profit_factor": 0.03
+          "filter_vetoes": 6
         },
         "GOLD": {
+          "trades": 5,
+          "win_rate": 60.0,
+          "pnl": -26.16,
+          "profit_factor": 0.73,
           "bars": 819,
-          "trades": 6,
-          "win_rate": 50.0,
-          "pnl": -53.38,
-          "profit_factor": 0.57
+          "filter_vetoes": 4
         },
         "NVDA": {
+          "trades": 8,
+          "win_rate": 12.5,
+          "pnl": -77.59,
+          "profit_factor": 0.69,
           "bars": 517,
-          "trades": 11,
-          "win_rate": 27.3,
-          "pnl": 25.88,
-          "profit_factor": 1.1
+          "filter_vetoes": 8
         },
         "TSLA": {
+          "trades": 11,
+          "win_rate": 63.6,
+          "pnl": 221.95,
+          "profit_factor": 2.11,
           "bars": 517,
-          "trades": 12,
-          "win_rate": 58.3,
-          "pnl": 181.82,
-          "profit_factor": 1.76
+          "filter_vetoes": 2
         },
         "US100": {
-          "bars": 846,
           "trades": 9,
           "win_rate": 33.3,
           "pnl": -159.77,
-          "profit_factor": 0.36
+          "profit_factor": 0.36,
+          "bars": 846,
+          "filter_vetoes": 0
         },
         "US500": {
+          "trades": 6,
+          "win_rate": 16.7,
+          "pnl": -257.36,
+          "profit_factor": 0.03,
           "bars": 846,
-          "trades": 9,
-          "win_rate": 22.2,
-          "pnl": -317.38,
-          "profit_factor": 0.07
+          "filter_vetoes": 5
         }
       }
     },
     "bb_rsi_m30": {
+      "trades": 53,
+      "win_rate": 32.1,
+      "pnl": -920.41,
+      "profit_factor": 0.38,
       "timeframe": "30m",
       "symbols_tested": [
         "BTCUSD",
@@ -1067,62 +1283,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 73,
-      "win_rate": 35.6,
-      "total_pnl": -1059.45,
+      "filter_vetoes": 46,
       "per_symbol": {
         "BTCUSD": {
+          "trades": 13,
+          "win_rate": 38.5,
+          "pnl": -134.64,
+          "profit_factor": 0.55,
           "bars": 939,
-          "trades": 18,
-          "win_rate": 33.3,
-          "pnl": -198.77,
-          "profit_factor": 0.54
+          "filter_vetoes": 11
         },
         "EURUSD": {
+          "trades": 10,
+          "win_rate": 20.0,
+          "pnl": -486.64,
+          "profit_factor": 0.03,
           "bars": 663,
-          "trades": 12,
-          "win_rate": 25.0,
-          "pnl": -525.77,
-          "profit_factor": 0.07
+          "filter_vetoes": 4
         },
         "GOLD": {
+          "trades": 8,
+          "win_rate": 25.0,
+          "pnl": -88.79,
+          "profit_factor": 0.55,
           "bars": 635,
-          "trades": 11,
-          "win_rate": 27.3,
-          "pnl": -147.39,
-          "profit_factor": 0.48
+          "filter_vetoes": 10
         },
         "NVDA": {
+          "trades": 5,
+          "win_rate": 40.0,
+          "pnl": 21.21,
+          "profit_factor": 1.31,
           "bars": 571,
-          "trades": 9,
-          "win_rate": 33.3,
-          "pnl": -97.89,
-          "profit_factor": 0.57
+          "filter_vetoes": 5
         },
         "TSLA": {
+          "trades": 6,
+          "win_rate": 16.7,
+          "pnl": -164.04,
+          "profit_factor": 0.23,
           "bars": 573,
-          "trades": 8,
-          "win_rate": 37.5,
-          "pnl": -80.51,
-          "profit_factor": 0.62
+          "filter_vetoes": 4
         },
         "US100": {
+          "trades": 6,
+          "win_rate": 50.0,
+          "pnl": -3.72,
+          "profit_factor": 0.96,
           "bars": 657,
-          "trades": 8,
-          "win_rate": 62.5,
-          "pnl": 46.72,
-          "profit_factor": 1.41
+          "filter_vetoes": 4
         },
         "US500": {
+          "trades": 5,
+          "win_rate": 40.0,
+          "pnl": -63.79,
+          "profit_factor": 0.4,
           "bars": 657,
-          "trades": 7,
-          "win_rate": 42.9,
-          "pnl": -55.83,
-          "profit_factor": 0.56
+          "filter_vetoes": 8
         }
       }
     },
     "intelligent_trading": {
+      "trades": 53,
+      "win_rate": 26.4,
+      "pnl": -952.48,
+      "profit_factor": 0.42,
       "timeframe": "1h",
       "symbols_tested": [
         "BTCUSD",
@@ -1133,62 +1358,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 76,
-      "win_rate": 40.8,
-      "total_pnl": -553.24,
+      "filter_vetoes": 83,
       "per_symbol": {
         "BTCUSD": {
+          "trades": 7,
+          "win_rate": 42.9,
+          "pnl": 17.77,
+          "profit_factor": 1.15,
           "bars": 877,
-          "trades": 13,
-          "win_rate": 46.2,
-          "pnl": 42.47,
-          "profit_factor": 1.2
+          "filter_vetoes": 16
         },
         "EURUSD": {
+          "trades": 5,
+          "win_rate": 0.0,
+          "pnl": -255.99,
+          "profit_factor": 0.0,
           "bars": 640,
-          "trades": 9,
-          "win_rate": 33.3,
-          "pnl": -306.94,
-          "profit_factor": 0.12
+          "filter_vetoes": 12
         },
         "GOLD": {
+          "trades": 9,
+          "win_rate": 44.4,
+          "pnl": -26.17,
+          "profit_factor": 0.88,
           "bars": 609,
-          "trades": 12,
-          "win_rate": 50.0,
-          "pnl": 61.84,
-          "profit_factor": 1.27
+          "filter_vetoes": 10
         },
         "NVDA": {
+          "trades": 6,
+          "win_rate": 16.7,
+          "pnl": -151.39,
+          "profit_factor": 0.25,
           "bars": 532,
-          "trades": 8,
-          "win_rate": 25.0,
-          "pnl": -118.42,
-          "profit_factor": 0.5
+          "filter_vetoes": 9
         },
         "TSLA": {
+          "trades": 14,
+          "win_rate": 21.4,
+          "pnl": -279.86,
+          "profit_factor": 0.36,
           "bars": 532,
-          "trades": 15,
-          "win_rate": 20.0,
-          "pnl": -316.32,
-          "profit_factor": 0.33
+          "filter_vetoes": 7
         },
         "US100": {
+          "trades": 6,
+          "win_rate": 33.3,
+          "pnl": -78.22,
+          "profit_factor": 0.56,
           "bars": 633,
-          "trades": 10,
-          "win_rate": 60.0,
-          "pnl": 62.73,
-          "profit_factor": 1.35
+          "filter_vetoes": 19
         },
         "US500": {
+          "trades": 6,
+          "win_rate": 16.7,
+          "pnl": -178.61,
+          "profit_factor": 0.18,
           "bars": 633,
-          "trades": 9,
-          "win_rate": 55.6,
-          "pnl": 21.39,
-          "profit_factor": 1.12
+          "filter_vetoes": 10
         }
       }
     },
     "multi_bb": {
+      "trades": 116,
+      "win_rate": 39.7,
+      "pnl": -2614.27,
+      "profit_factor": 0.35,
       "timeframe": "15m",
       "symbols_tested": [
         "BTCUSD",
@@ -1199,67 +1433,81 @@
         "US100",
         "US500"
       ],
-      "total_trades": 165,
-      "win_rate": 37.6,
-      "total_pnl": -3419.72,
+      "filter_vetoes": 146,
       "per_symbol": {
         "BTCUSD": {
+          "trades": 24,
+          "win_rate": 50.0,
+          "pnl": -334.81,
+          "profit_factor": 0.52,
           "bars": 1000,
-          "trades": 29,
-          "win_rate": 55.2,
-          "pnl": -138.23,
-          "profit_factor": 0.77
+          "filter_vetoes": 33
         },
         "EURUSD": {
-          "bars": 854,
-          "trades": 31,
+          "trades": 19,
           "win_rate": 0.0,
-          "pnl": -1662.74,
-          "profit_factor": 0.0
+          "pnl": -1055.08,
+          "profit_factor": 0.0,
+          "bars": 854,
+          "filter_vetoes": 25
         },
         "GOLD": {
+          "trades": 15,
+          "win_rate": 66.7,
+          "pnl": -17.52,
+          "profit_factor": 0.93,
           "bars": 819,
-          "trades": 23,
-          "win_rate": 39.1,
-          "pnl": -337.74,
-          "profit_factor": 0.4
+          "filter_vetoes": 25
         },
         "NVDA": {
+          "trades": 12,
+          "win_rate": 41.7,
+          "pnl": -334.86,
+          "profit_factor": 0.35,
           "bars": 517,
-          "trades": 17,
-          "win_rate": 47.1,
-          "pnl": -378.04,
-          "profit_factor": 0.4
+          "filter_vetoes": 14
         },
         "TSLA": {
+          "trades": 15,
+          "win_rate": 46.7,
+          "pnl": -298.1,
+          "profit_factor": 0.52,
           "bars": 517,
-          "trades": 18,
-          "win_rate": 50.0,
-          "pnl": -276.3,
-          "profit_factor": 0.59
+          "filter_vetoes": 9
         },
         "US100": {
+          "trades": 18,
+          "win_rate": 38.9,
+          "pnl": -278.67,
+          "profit_factor": 0.4,
           "bars": 846,
-          "trades": 25,
-          "win_rate": 48.0,
-          "pnl": -203.37,
-          "profit_factor": 0.59
+          "filter_vetoes": 17
         },
         "US500": {
+          "trades": 13,
+          "win_rate": 38.5,
+          "pnl": -295.22,
+          "profit_factor": 0.29,
           "bars": 846,
-          "trades": 22,
-          "win_rate": 36.4,
-          "pnl": -423.3,
-          "profit_factor": 0.3
+          "filter_vetoes": 23
         }
       }
     },
     "multi_bb_app": {
       "timeframe": "15m",
       "symbols_tested": [],
-      "note": "no cached candles at this timeframe/symbol scope"
+      "note": "no cached candles at this timeframe/symbol scope",
+      "trades": 0,
+      "win_rate": null,
+      "pnl": 0.0,
+      "profit_factor": null,
+      "filter_vetoes": 0
     },
     "macd_stoch": {
+      "trades": 42,
+      "win_rate": 38.1,
+      "pnl": -744.92,
+      "profit_factor": 0.44,
       "timeframe": "15m",
       "symbols_tested": [
         "BTCUSD",
@@ -1270,62 +1518,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 54,
-      "win_rate": 46.3,
-      "total_pnl": -522.04,
+      "filter_vetoes": 17,
       "per_symbol": {
         "BTCUSD": {
+          "trades": 6,
+          "win_rate": 66.7,
+          "pnl": 54.63,
+          "profit_factor": 1.65,
           "bars": 1000,
-          "trades": 7,
-          "win_rate": 57.1,
-          "pnl": 40.83,
-          "profit_factor": 1.42
+          "filter_vetoes": 1
         },
         "EURUSD": {
-          "bars": 854,
           "trades": 5,
           "win_rate": 0.0,
           "pnl": -400.67,
-          "profit_factor": 0.0
+          "profit_factor": 0.0,
+          "bars": 854,
+          "filter_vetoes": 0
         },
         "GOLD": {
+          "trades": 5,
+          "win_rate": 20.0,
+          "pnl": -130.76,
+          "profit_factor": 0.31,
           "bars": 819,
-          "trades": 10,
-          "win_rate": 40.0,
-          "pnl": -80.85,
-          "profit_factor": 0.66
+          "filter_vetoes": 7
         },
         "NVDA": {
+          "trades": 7,
+          "win_rate": 14.3,
+          "pnl": -172.67,
+          "profit_factor": 0.3,
           "bars": 517,
-          "trades": 8,
-          "win_rate": 37.5,
-          "pnl": -91.85,
-          "profit_factor": 0.56
+          "filter_vetoes": 3
         },
         "TSLA": {
-          "bars": 517,
           "trades": 6,
           "win_rate": 66.7,
           "pnl": -14.46,
-          "profit_factor": 0.91
+          "profit_factor": 0.91,
+          "bars": 517,
+          "filter_vetoes": 0
         },
         "US100": {
+          "trades": 4,
+          "win_rate": 50.0,
+          "pnl": 18.49,
+          "profit_factor": 1.24,
           "bars": 846,
-          "trades": 6,
-          "win_rate": 66.7,
-          "pnl": 86.22,
-          "profit_factor": 2.13
+          "filter_vetoes": 3
         },
         "US500": {
+          "trades": 9,
+          "win_rate": 44.4,
+          "pnl": -99.48,
+          "profit_factor": 0.47,
           "bars": 846,
-          "trades": 12,
-          "win_rate": 50.0,
-          "pnl": -61.26,
-          "profit_factor": 0.7
+          "filter_vetoes": 3
         }
       }
     },
     "alligator": {
+      "trades": 92,
+      "win_rate": 23.9,
+      "pnl": -1377.93,
+      "profit_factor": 0.36,
       "timeframe": "1h",
       "symbols_tested": [
         "BTCUSD",
@@ -1336,62 +1593,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 143,
-      "win_rate": 25.2,
-      "total_pnl": -2012.75,
+      "filter_vetoes": 422,
       "per_symbol": {
         "BTCUSD": {
+          "trades": 21,
+          "win_rate": 33.3,
+          "pnl": -181.37,
+          "profit_factor": 0.56,
           "bars": 877,
-          "trades": 28,
-          "win_rate": 28.6,
-          "pnl": -295.52,
-          "profit_factor": 0.5
+          "filter_vetoes": 51
         },
         "EURUSD": {
+          "trades": 14,
+          "win_rate": 7.1,
+          "pnl": -567.74,
+          "profit_factor": 0.02,
           "bars": 640,
-          "trades": 19,
-          "win_rate": 10.5,
-          "pnl": -750.66,
-          "profit_factor": 0.03
+          "filter_vetoes": 67
         },
         "GOLD": {
+          "trades": 13,
+          "win_rate": 30.8,
+          "pnl": -192.38,
+          "profit_factor": 0.45,
           "bars": 609,
-          "trades": 22,
-          "win_rate": 22.7,
-          "pnl": -355.8,
-          "profit_factor": 0.34
+          "filter_vetoes": 94
         },
         "NVDA": {
+          "trades": 8,
+          "win_rate": 25.0,
+          "pnl": -22.43,
+          "profit_factor": 0.72,
           "bars": 532,
-          "trades": 17,
-          "win_rate": 23.5,
-          "pnl": -125.55,
-          "profit_factor": 0.51
+          "filter_vetoes": 59
         },
         "TSLA": {
+          "trades": 8,
+          "win_rate": 25.0,
+          "pnl": -6.78,
+          "profit_factor": 0.93,
           "bars": 532,
-          "trades": 14,
-          "win_rate": 35.7,
-          "pnl": 10.91,
-          "profit_factor": 1.06
+          "filter_vetoes": 33
         },
         "US100": {
+          "trades": 17,
+          "win_rate": 23.5,
+          "pnl": -189.45,
+          "profit_factor": 0.46,
           "bars": 633,
-          "trades": 23,
-          "win_rate": 30.4,
-          "pnl": -226.53,
-          "profit_factor": 0.5
+          "filter_vetoes": 60
         },
         "US500": {
+          "trades": 11,
+          "win_rate": 18.2,
+          "pnl": -217.78,
+          "profit_factor": 0.24,
           "bars": 633,
-          "trades": 20,
-          "win_rate": 25.0,
-          "pnl": -269.58,
-          "profit_factor": 0.39
+          "filter_vetoes": 58
         }
       }
     },
     "hma_dc_m1": {
+      "trades": 496,
+      "win_rate": 9.1,
+      "pnl": -32729.32,
+      "profit_factor": 0.03,
       "timeframe": "1m",
       "symbols_tested": [
         "BTCUSD",
@@ -1402,62 +1668,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 2068,
-      "win_rate": 2.7,
-      "total_pnl": -52625.64,
+      "filter_vetoes": 2429,
       "per_symbol": {
         "BTCUSD": {
+          "trades": 71,
+          "win_rate": 11.3,
+          "pnl": -4268.74,
+          "profit_factor": 0.03,
           "bars": 1000,
-          "trades": 257,
-          "win_rate": 5.4,
-          "pnl": -7309.96,
-          "profit_factor": 0.01
+          "filter_vetoes": 336
         },
         "EURUSD": {
-          "bars": 1000,
-          "trades": 334,
+          "trades": 64,
           "win_rate": 0.0,
-          "pnl": -9972.65,
-          "profit_factor": 0.0
+          "pnl": -9620.23,
+          "profit_factor": 0.0,
+          "bars": 1000,
+          "filter_vetoes": 426
         },
         "GOLD": {
+          "trades": 70,
+          "win_rate": 7.1,
+          "pnl": -4156.61,
+          "profit_factor": 0.03,
           "bars": 1000,
-          "trades": 294,
-          "win_rate": 1.7,
-          "pnl": -7662.05,
-          "profit_factor": 0.01
+          "filter_vetoes": 331
         },
         "NVDA": {
+          "trades": 67,
+          "win_rate": 17.9,
+          "pnl": -2242.2,
+          "profit_factor": 0.18,
           "bars": 1000,
-          "trades": 292,
-          "win_rate": 4.8,
-          "pnl": -6077.31,
-          "profit_factor": 0.05
+          "filter_vetoes": 378
         },
         "TSLA": {
+          "trades": 101,
+          "win_rate": 14.9,
+          "pnl": -3556.59,
+          "profit_factor": 0.09,
           "bars": 1000,
-          "trades": 287,
-          "win_rate": 5.6,
-          "pnl": -5984.41,
-          "profit_factor": 0.04
+          "filter_vetoes": 263
         },
         "US100": {
+          "trades": 64,
+          "win_rate": 7.8,
+          "pnl": -3671.91,
+          "profit_factor": 0.01,
           "bars": 1000,
-          "trades": 310,
-          "win_rate": 1.9,
-          "pnl": -7252.1,
-          "profit_factor": 0.0
+          "filter_vetoes": 361
         },
         "US500": {
-          "bars": 1000,
-          "trades": 294,
+          "trades": 59,
           "win_rate": 0.0,
-          "pnl": -8367.15,
-          "profit_factor": 0.0
+          "pnl": -5213.05,
+          "profit_factor": 0.0,
+          "bars": 1000,
+          "filter_vetoes": 334
         }
       }
     },
     "hma_dc_m5": {
+      "trades": 391,
+      "win_rate": 13.3,
+      "pnl": -16867.1,
+      "profit_factor": 0.12,
       "timeframe": "5m",
       "symbols_tested": [
         "BTCUSD",
@@ -1468,62 +1743,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 1967,
-      "win_rate": 3.3,
-      "total_pnl": -42440.12,
+      "filter_vetoes": 2820,
       "per_symbol": {
         "BTCUSD": {
+          "trades": 61,
+          "win_rate": 14.8,
+          "pnl": -1572.87,
+          "profit_factor": 0.19,
           "bars": 1000,
-          "trades": 344,
-          "win_rate": 3.5,
-          "pnl": -5838.09,
-          "profit_factor": 0.06
+          "filter_vetoes": 462
         },
         "EURUSD": {
-          "bars": 1000,
-          "trades": 323,
+          "trades": 77,
           "win_rate": 0.0,
-          "pnl": -9692.25,
-          "profit_factor": 0.0
+          "pnl": -6983.75,
+          "profit_factor": 0.0,
+          "bars": 1000,
+          "filter_vetoes": 486
         },
         "GOLD": {
+          "trades": 58,
+          "win_rate": 13.8,
+          "pnl": -1988.41,
+          "profit_factor": 0.1,
           "bars": 1000,
-          "trades": 334,
-          "win_rate": 3.3,
-          "pnl": -6263.79,
-          "profit_factor": 0.03
+          "filter_vetoes": 477
         },
         "NVDA": {
+          "trades": 52,
+          "win_rate": 21.2,
+          "pnl": -999.14,
+          "profit_factor": 0.41,
           "bars": 744,
-          "trades": 151,
-          "win_rate": 9.3,
-          "pnl": -2833.95,
-          "profit_factor": 0.19
+          "filter_vetoes": 211
         },
         "TSLA": {
+          "trades": 35,
+          "win_rate": 34.3,
+          "pnl": -448.58,
+          "profit_factor": 0.66,
           "bars": 744,
-          "trades": 178,
-          "win_rate": 7.9,
-          "pnl": -3744.91,
-          "profit_factor": 0.17
+          "filter_vetoes": 291
         },
         "US100": {
+          "trades": 50,
+          "win_rate": 14.0,
+          "pnl": -1788.11,
+          "profit_factor": 0.1,
           "bars": 1000,
-          "trades": 322,
-          "win_rate": 2.5,
-          "pnl": -6349.54,
-          "profit_factor": 0.02
+          "filter_vetoes": 452
         },
         "US500": {
+          "trades": 58,
+          "win_rate": 8.6,
+          "pnl": -3086.23,
+          "profit_factor": 0.01,
           "bars": 1000,
-          "trades": 315,
-          "win_rate": 1.9,
-          "pnl": -7717.58,
-          "profit_factor": 0.0
+          "filter_vetoes": 441
         }
       }
     },
     "hma_dc_m15": {
+      "trades": 433,
+      "win_rate": 10.6,
+      "pnl": -12316.53,
+      "profit_factor": 0.17,
       "timeframe": "15m",
       "symbols_tested": [
         "BTCUSD",
@@ -1534,62 +1818,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 1306,
-      "win_rate": 4.5,
-      "total_pnl": -29202.29,
+      "filter_vetoes": 1902,
       "per_symbol": {
         "BTCUSD": {
+          "trades": 93,
+          "win_rate": 11.8,
+          "pnl": -2182.76,
+          "profit_factor": 0.14,
           "bars": 1000,
-          "trades": 264,
-          "win_rate": 4.9,
-          "pnl": -4742.36,
-          "profit_factor": 0.07
+          "filter_vetoes": 338
         },
         "EURUSD": {
+          "trades": 67,
+          "win_rate": 1.5,
+          "pnl": -4265.1,
+          "profit_factor": 0.01,
           "bars": 854,
-          "trades": 226,
-          "win_rate": 0.9,
-          "pnl": -8020.51,
-          "profit_factor": 0.0
+          "filter_vetoes": 357
         },
         "GOLD": {
+          "trades": 73,
+          "win_rate": 5.5,
+          "pnl": -1715.6,
+          "profit_factor": 0.09,
           "bars": 819,
-          "trades": 203,
-          "win_rate": 3.4,
-          "pnl": -4093.82,
-          "profit_factor": 0.05
+          "filter_vetoes": 332
         },
         "NVDA": {
+          "trades": 36,
+          "win_rate": 16.7,
+          "pnl": -454.69,
+          "profit_factor": 0.56,
           "bars": 517,
-          "trades": 77,
-          "win_rate": 11.7,
-          "pnl": -1068.89,
-          "profit_factor": 0.37
+          "filter_vetoes": 126
         },
         "TSLA": {
+          "trades": 40,
+          "win_rate": 22.5,
+          "pnl": -265.8,
+          "profit_factor": 0.75,
           "bars": 517,
-          "trades": 106,
-          "win_rate": 8.5,
-          "pnl": -1956.85,
-          "profit_factor": 0.27
+          "filter_vetoes": 135
         },
         "US100": {
+          "trades": 62,
+          "win_rate": 12.9,
+          "pnl": -1313.1,
+          "profit_factor": 0.21,
           "bars": 846,
-          "trades": 226,
-          "win_rate": 4.4,
-          "pnl": -4208.18,
-          "profit_factor": 0.08
+          "filter_vetoes": 316
         },
         "US500": {
+          "trades": 62,
+          "win_rate": 11.3,
+          "pnl": -2119.47,
+          "profit_factor": 0.07,
           "bars": 846,
-          "trades": 204,
-          "win_rate": 4.4,
-          "pnl": -5111.68,
-          "profit_factor": 0.03
+          "filter_vetoes": 298
         }
       }
     },
     "hma_dc_h1": {
+      "trades": 276,
+      "win_rate": 23.2,
+      "pnl": -4524.16,
+      "profit_factor": 0.35,
       "timeframe": "1h",
       "symbols_tested": [
         "BTCUSD",
@@ -1600,62 +1893,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 458,
-      "win_rate": 16.4,
-      "total_pnl": -7836.23,
+      "filter_vetoes": 943,
       "per_symbol": {
         "BTCUSD": {
+          "trades": 57,
+          "win_rate": 26.3,
+          "pnl": -420.88,
+          "profit_factor": 0.6,
           "bars": 877,
-          "trades": 97,
-          "win_rate": 17.5,
-          "pnl": -1300.24,
-          "profit_factor": 0.31
+          "filter_vetoes": 164
         },
         "EURUSD": {
+          "trades": 39,
+          "win_rate": 12.8,
+          "pnl": -1508.57,
+          "profit_factor": 0.07,
           "bars": 640,
-          "trades": 69,
-          "win_rate": 11.6,
-          "pnl": -2396.14,
-          "profit_factor": 0.08
+          "filter_vetoes": 156
         },
         "GOLD": {
+          "trades": 32,
+          "win_rate": 31.2,
+          "pnl": -338.54,
+          "profit_factor": 0.52,
           "bars": 609,
-          "trades": 60,
-          "win_rate": 16.7,
-          "pnl": -906.4,
-          "profit_factor": 0.3
+          "filter_vetoes": 145
         },
         "NVDA": {
+          "trades": 29,
+          "win_rate": 17.2,
+          "pnl": -481.11,
+          "profit_factor": 0.3,
           "bars": 532,
-          "trades": 47,
-          "win_rate": 21.3,
-          "pnl": -592.72,
-          "profit_factor": 0.42
+          "filter_vetoes": 139
         },
         "TSLA": {
+          "trades": 41,
+          "win_rate": 29.3,
+          "pnl": -476.27,
+          "profit_factor": 0.51,
           "bars": 532,
-          "trades": 51,
-          "win_rate": 23.5,
-          "pnl": -389.41,
-          "profit_factor": 0.63
+          "filter_vetoes": 93
         },
         "US100": {
+          "trades": 31,
+          "win_rate": 35.5,
+          "pnl": -202.34,
+          "profit_factor": 0.69,
           "bars": 633,
-          "trades": 62,
-          "win_rate": 17.7,
-          "pnl": -719.24,
-          "profit_factor": 0.4
+          "filter_vetoes": 145
         },
         "US500": {
+          "trades": 47,
+          "win_rate": 12.8,
+          "pnl": -1096.46,
+          "profit_factor": 0.14,
           "bars": 633,
-          "trades": 72,
-          "win_rate": 9.7,
-          "pnl": -1532.09,
-          "profit_factor": 0.13
+          "filter_vetoes": 101
         }
       }
     },
     "hma_dc_h4": {
+      "trades": 274,
+      "win_rate": 30.3,
+      "pnl": -1466.53,
+      "profit_factor": 0.71,
       "timeframe": "4h",
       "symbols_tested": [
         "BTCUSD",
@@ -1666,62 +1968,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 331,
-      "win_rate": 30.2,
-      "total_pnl": -1690.55,
+      "filter_vetoes": 633,
       "per_symbol": {
         "BTCUSD": {
+          "trades": 62,
+          "win_rate": 24.2,
+          "pnl": -335.63,
+          "profit_factor": 0.67,
           "bars": 858,
-          "trades": 69,
-          "win_rate": 24.6,
-          "pnl": -415.79,
-          "profit_factor": 0.65
+          "filter_vetoes": 102
         },
         "EURUSD": {
+          "trades": 38,
+          "win_rate": 13.2,
+          "pnl": -793.56,
+          "profit_factor": 0.22,
           "bars": 640,
-          "trades": 59,
-          "win_rate": 10.2,
-          "pnl": -1268.26,
-          "profit_factor": 0.14
+          "filter_vetoes": 175
         },
         "GOLD": {
+          "trades": 43,
+          "win_rate": 32.6,
+          "pnl": -99.52,
+          "profit_factor": 0.88,
           "bars": 636,
-          "trades": 49,
-          "win_rate": 32.7,
-          "pnl": -31.32,
-          "profit_factor": 0.97
+          "filter_vetoes": 67
         },
         "NVDA": {
+          "trades": 29,
+          "win_rate": 48.3,
+          "pnl": 19.71,
+          "profit_factor": 1.04,
           "bars": 556,
-          "trades": 36,
-          "win_rate": 44.4,
-          "pnl": 46.47,
-          "profit_factor": 1.09
+          "filter_vetoes": 73
         },
         "TSLA": {
+          "trades": 33,
+          "win_rate": 33.3,
+          "pnl": 60.04,
+          "profit_factor": 1.11,
           "bars": 556,
-          "trades": 36,
-          "win_rate": 36.1,
-          "pnl": 9.73,
-          "profit_factor": 1.02
+          "filter_vetoes": 63
         },
         "US100": {
+          "trades": 34,
+          "win_rate": 41.2,
+          "pnl": -175.85,
+          "profit_factor": 0.76,
           "bars": 636,
-          "trades": 40,
-          "win_rate": 45.0,
-          "pnl": 75.84,
-          "profit_factor": 1.11
+          "filter_vetoes": 82
         },
         "US500": {
+          "trades": 35,
+          "win_rate": 28.6,
+          "pnl": -141.71,
+          "profit_factor": 0.75,
           "bars": 636,
-          "trades": 42,
-          "win_rate": 33.3,
-          "pnl": -107.21,
-          "profit_factor": 0.84
+          "filter_vetoes": 71
         }
       }
     },
     "hma_dc_d1": {
+      "trades": 341,
+      "win_rate": 31.1,
+      "pnl": -1472.17,
+      "profit_factor": 0.74,
       "timeframe": "1d",
       "symbols_tested": [
         "BTCUSD",
@@ -1732,62 +2043,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 433,
-      "win_rate": 29.6,
-      "total_pnl": -1697.91,
+      "filter_vetoes": 754,
       "per_symbol": {
         "BTCUSD": {
+          "trades": 61,
+          "win_rate": 31.1,
+          "pnl": -1.83,
+          "profit_factor": 1.0,
           "bars": 852,
-          "trades": 73,
-          "win_rate": 32.9,
-          "pnl": -47.71,
-          "profit_factor": 0.95
+          "filter_vetoes": 125
         },
         "EURUSD": {
+          "trades": 53,
+          "win_rate": 22.6,
+          "pnl": -493.1,
+          "profit_factor": 0.42,
           "bars": 732,
-          "trades": 65,
-          "win_rate": 23.1,
-          "pnl": -500.38,
-          "profit_factor": 0.49
+          "filter_vetoes": 68
         },
         "GOLD": {
-          "bars": 729,
           "trades": 58,
-          "win_rate": 41.4,
-          "pnl": 142.05,
-          "profit_factor": 1.15
+          "win_rate": 37.9,
+          "pnl": 46.99,
+          "profit_factor": 1.05,
+          "bars": 729,
+          "filter_vetoes": 34
         },
         "NVDA": {
+          "trades": 37,
+          "win_rate": 35.1,
+          "pnl": -2.32,
+          "profit_factor": 1.0,
           "bars": 586,
-          "trades": 55,
-          "win_rate": 29.1,
-          "pnl": -151.7,
-          "profit_factor": 0.8
+          "filter_vetoes": 133
         },
         "TSLA": {
+          "trades": 44,
+          "win_rate": 27.3,
+          "pnl": -398.89,
+          "profit_factor": 0.51,
           "bars": 586,
-          "trades": 56,
-          "win_rate": 25.0,
-          "pnl": -489.22,
-          "profit_factor": 0.47
+          "filter_vetoes": 89
         },
         "US100": {
+          "trades": 43,
+          "win_rate": 34.9,
+          "pnl": -221.49,
+          "profit_factor": 0.72,
           "bars": 731,
-          "trades": 64,
-          "win_rate": 28.1,
-          "pnl": -276.53,
-          "profit_factor": 0.71
+          "filter_vetoes": 163
         },
         "US500": {
+          "trades": 45,
+          "win_rate": 28.9,
+          "pnl": -401.53,
+          "profit_factor": 0.54,
           "bars": 731,
-          "trades": 62,
-          "win_rate": 27.4,
-          "pnl": -374.4,
-          "profit_factor": 0.61
+          "filter_vetoes": 142
         }
       }
     },
     "fvg_m1": {
+      "trades": 291,
+      "win_rate": 9.6,
+      "pnl": -21976.47,
+      "profit_factor": 0.02,
       "timeframe": "1m",
       "symbols_tested": [
         "BTCUSD",
@@ -1798,62 +2118,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 397,
-      "win_rate": 9.1,
-      "total_pnl": -24955.71,
+      "filter_vetoes": 309,
       "per_symbol": {
         "BTCUSD": {
+          "trades": 39,
+          "win_rate": 17.9,
+          "pnl": -2057.67,
+          "profit_factor": 0.06,
           "bars": 1000,
-          "trades": 47,
-          "win_rate": 14.9,
-          "pnl": -2565.94,
-          "profit_factor": 0.05
+          "filter_vetoes": 19
         },
         "EURUSD": {
-          "bars": 1000,
-          "trades": 51,
+          "trades": 40,
           "win_rate": 0.0,
-          "pnl": -9058.53,
-          "profit_factor": 0.0
+          "pnl": -8673.68,
+          "profit_factor": 0.0,
+          "bars": 1000,
+          "filter_vetoes": 44
         },
         "GOLD": {
+          "trades": 43,
+          "win_rate": 7.0,
+          "pnl": -2412.66,
+          "profit_factor": 0.03,
           "bars": 1000,
-          "trades": 44,
-          "win_rate": 6.8,
-          "pnl": -2422.21,
-          "profit_factor": 0.03
+          "filter_vetoes": 1
         },
         "NVDA": {
+          "trades": 37,
+          "win_rate": 13.5,
+          "pnl": -1230.45,
+          "profit_factor": 0.08,
           "bars": 1000,
-          "trades": 77,
-          "win_rate": 13.0,
-          "pnl": -2041.43,
-          "profit_factor": 0.08
+          "filter_vetoes": 118
         },
         "TSLA": {
+          "trades": 52,
+          "win_rate": 19.2,
+          "pnl": -1810.86,
+          "profit_factor": 0.08,
           "bars": 1000,
-          "trades": 82,
-          "win_rate": 14.6,
-          "pnl": -2320.37,
-          "profit_factor": 0.07
+          "filter_vetoes": 88
         },
         "US100": {
+          "trades": 30,
+          "win_rate": 10.0,
+          "pnl": -1571.17,
+          "profit_factor": 0.03,
           "bars": 1000,
-          "trades": 39,
-          "win_rate": 10.3,
-          "pnl": -1904.46,
-          "profit_factor": 0.03
+          "filter_vetoes": 22
         },
         "US500": {
-          "bars": 1000,
-          "trades": 57,
+          "trades": 50,
           "win_rate": 0.0,
-          "pnl": -4642.76,
-          "profit_factor": 0.0
+          "pnl": -4219.97,
+          "profit_factor": 0.0,
+          "bars": 1000,
+          "filter_vetoes": 17
         }
       }
     },
     "fvg_m5": {
+      "trades": 132,
+      "win_rate": 22.7,
+      "pnl": -3576.53,
+      "profit_factor": 0.28,
       "timeframe": "5m",
       "symbols_tested": [
         "BTCUSD",
@@ -1864,62 +2193,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 200,
-      "win_rate": 19.0,
-      "total_pnl": -6573.36,
+      "filter_vetoes": 209,
       "per_symbol": {
         "BTCUSD": {
+          "trades": 15,
+          "win_rate": 40.0,
+          "pnl": -177.76,
+          "profit_factor": 0.52,
           "bars": 1000,
-          "trades": 24,
-          "win_rate": 33.3,
-          "pnl": -339.21,
-          "profit_factor": 0.44
+          "filter_vetoes": 23
         },
         "EURUSD": {
-          "bars": 1000,
-          "trades": 37,
+          "trades": 18,
           "win_rate": 0.0,
-          "pnl": -3909.56,
-          "profit_factor": 0.0
+          "pnl": -1715.41,
+          "profit_factor": 0.0,
+          "bars": 1000,
+          "filter_vetoes": 53
         },
         "GOLD": {
+          "trades": 16,
+          "win_rate": 25.0,
+          "pnl": -440.28,
+          "profit_factor": 0.17,
           "bars": 1000,
-          "trades": 22,
-          "win_rate": 22.7,
-          "pnl": -630.82,
-          "profit_factor": 0.15
+          "filter_vetoes": 17
         },
         "NVDA": {
+          "trades": 26,
+          "win_rate": 38.5,
+          "pnl": 43.42,
+          "profit_factor": 1.11,
           "bars": 744,
-          "trades": 34,
-          "win_rate": 29.4,
-          "pnl": -188.63,
-          "profit_factor": 0.62
+          "filter_vetoes": 12
         },
         "TSLA": {
+          "trades": 25,
+          "win_rate": 16.0,
+          "pnl": -1.0,
+          "profit_factor": 1.0,
           "bars": 744,
-          "trades": 39,
-          "win_rate": 17.9,
-          "pnl": 157.11,
-          "profit_factor": 1.19
+          "filter_vetoes": 54
         },
         "US100": {
+          "trades": 17,
+          "win_rate": 23.5,
+          "pnl": -601.81,
+          "profit_factor": 0.13,
           "bars": 1000,
-          "trades": 23,
-          "win_rate": 21.7,
-          "pnl": -713.46,
-          "profit_factor": 0.13
+          "filter_vetoes": 18
         },
         "US500": {
+          "trades": 15,
+          "win_rate": 13.3,
+          "pnl": -683.7,
+          "profit_factor": 0.03,
           "bars": 1000,
-          "trades": 21,
-          "win_rate": 14.3,
-          "pnl": -948.79,
-          "profit_factor": 0.05
+          "filter_vetoes": 32
         }
       }
     },
     "fvg_m15": {
+      "trades": 92,
+      "win_rate": 28.3,
+      "pnl": -1480.09,
+      "profit_factor": 0.4,
       "timeframe": "15m",
       "symbols_tested": [
         "BTCUSD",
@@ -1930,62 +2268,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 133,
-      "win_rate": 29.3,
-      "total_pnl": -1883.53,
+      "filter_vetoes": 125,
       "per_symbol": {
         "BTCUSD": {
-          "bars": 1000,
-          "trades": 28,
+          "trades": 21,
           "win_rate": 28.6,
-          "pnl": -342.8,
-          "profit_factor": 0.45
+          "pnl": -265.83,
+          "profit_factor": 0.42,
+          "bars": 1000,
+          "filter_vetoes": 15
         },
         "EURUSD": {
+          "trades": 11,
+          "win_rate": 0.0,
+          "pnl": -680.99,
+          "profit_factor": 0.0,
           "bars": 854,
-          "trades": 14,
-          "win_rate": 21.4,
-          "pnl": -595.05,
-          "profit_factor": 0.06
+          "filter_vetoes": 13
         },
         "GOLD": {
+          "trades": 9,
+          "win_rate": 22.2,
+          "pnl": -112.07,
+          "profit_factor": 0.4,
           "bars": 819,
-          "trades": 15,
-          "win_rate": 26.7,
-          "pnl": -146.26,
-          "profit_factor": 0.47
+          "filter_vetoes": 33
         },
         "NVDA": {
+          "trades": 11,
+          "win_rate": 36.4,
+          "pnl": 24.77,
+          "profit_factor": 1.1,
           "bars": 517,
-          "trades": 14,
-          "win_rate": 42.9,
-          "pnl": 145.56,
-          "profit_factor": 1.56
+          "filter_vetoes": 3
         },
         "TSLA": {
+          "trades": 10,
+          "win_rate": 40.0,
+          "pnl": 34.47,
+          "profit_factor": 1.16,
           "bars": 517,
-          "trades": 20,
-          "win_rate": 35.0,
-          "pnl": -75.76,
-          "profit_factor": 0.83
+          "filter_vetoes": 34
         },
         "US100": {
+          "trades": 16,
+          "win_rate": 37.5,
+          "pnl": -194.44,
+          "profit_factor": 0.38,
           "bars": 846,
-          "trades": 19,
-          "win_rate": 31.6,
-          "pnl": -317.16,
-          "profit_factor": 0.27
+          "filter_vetoes": 8
         },
         "US500": {
+          "trades": 14,
+          "win_rate": 28.6,
+          "pnl": -285.99,
+          "profit_factor": 0.21,
           "bars": 846,
-          "trades": 23,
-          "win_rate": 21.7,
-          "pnl": -552.06,
-          "profit_factor": 0.17
+          "filter_vetoes": 19
         }
       }
     },
     "fvg_m30": {
+      "trades": 87,
+      "win_rate": 41.4,
+      "pnl": -577.0,
+      "profit_factor": 0.62,
       "timeframe": "30m",
       "symbols_tested": [
         "BTCUSD",
@@ -1996,62 +2343,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 111,
-      "win_rate": 39.6,
-      "total_pnl": -1059.45,
+      "filter_vetoes": 101,
       "per_symbol": {
         "BTCUSD": {
+          "trades": 25,
+          "win_rate": 24.0,
+          "pnl": -278.07,
+          "profit_factor": 0.44,
           "bars": 939,
-          "trades": 29,
-          "win_rate": 34.5,
-          "pnl": -252.13,
-          "profit_factor": 0.53
+          "filter_vetoes": 14
         },
         "EURUSD": {
+          "trades": 10,
+          "win_rate": 30.0,
+          "pnl": -295.85,
+          "profit_factor": 0.1,
           "bars": 663,
-          "trades": 11,
-          "win_rate": 27.3,
-          "pnl": -356.5,
-          "profit_factor": 0.09
+          "filter_vetoes": 7
         },
         "GOLD": {
+          "trades": 11,
+          "win_rate": 72.7,
+          "pnl": 67.28,
+          "profit_factor": 1.65,
           "bars": 635,
-          "trades": 18,
-          "win_rate": 55.6,
-          "pnl": -60.53,
-          "profit_factor": 0.75
+          "filter_vetoes": 30
         },
         "NVDA": {
+          "trades": 6,
+          "win_rate": 66.7,
+          "pnl": 73.03,
+          "profit_factor": 2.6,
           "bars": 571,
-          "trades": 8,
-          "win_rate": 50.0,
-          "pnl": -32.04,
-          "profit_factor": 0.73
+          "filter_vetoes": 13
         },
         "TSLA": {
+          "trades": 12,
+          "win_rate": 58.3,
+          "pnl": 107.7,
+          "profit_factor": 3.24,
           "bars": 573,
-          "trades": 14,
-          "win_rate": 64.3,
-          "pnl": 208.06,
-          "profit_factor": 6.19
+          "filter_vetoes": 16
         },
         "US100": {
+          "trades": 12,
+          "win_rate": 33.3,
+          "pnl": -114.11,
+          "profit_factor": 0.6,
           "bars": 657,
-          "trades": 14,
-          "win_rate": 28.6,
-          "pnl": -177.63,
-          "profit_factor": 0.49
+          "filter_vetoes": 4
         },
         "US500": {
+          "trades": 11,
+          "win_rate": 36.4,
+          "pnl": -136.98,
+          "profit_factor": 0.38,
           "bars": 657,
-          "trades": 17,
-          "win_rate": 23.5,
-          "pnl": -388.68,
-          "profit_factor": 0.18
+          "filter_vetoes": 17
         }
       }
     },
     "scalp_ema_vwap_m1": {
+      "trades": 238,
+      "win_rate": 17.2,
+      "pnl": -17686.39,
+      "profit_factor": 0.06,
       "timeframe": "1m",
       "symbols_tested": [
         "BTCUSD",
@@ -2062,62 +2418,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 563,
-      "win_rate": 8.7,
-      "total_pnl": -24764.21,
+      "filter_vetoes": 2319,
       "per_symbol": {
         "BTCUSD": {
+          "trades": 52,
+          "win_rate": 17.3,
+          "pnl": -2792.81,
+          "profit_factor": 0.04,
           "bars": 1000,
-          "trades": 103,
-          "win_rate": 12.6,
-          "pnl": -4740.0,
-          "profit_factor": 0.03
+          "filter_vetoes": 325
         },
         "EURUSD": {
-          "bars": 1000,
-          "trades": 111,
+          "trades": 39,
           "win_rate": 0.0,
-          "pnl": -8201.92,
-          "profit_factor": 0.0
+          "pnl": -7729.46,
+          "profit_factor": 0.0,
+          "bars": 1000,
+          "filter_vetoes": 411
         },
         "GOLD": {
+          "trades": 37,
+          "win_rate": 21.6,
+          "pnl": -2167.31,
+          "profit_factor": 0.06,
           "bars": 1000,
-          "trades": 66,
-          "win_rate": 12.1,
-          "pnl": -3136.79,
-          "profit_factor": 0.04
+          "filter_vetoes": 359
         },
         "NVDA": {
+          "trades": 22,
+          "win_rate": 45.5,
+          "pnl": -326.54,
+          "profit_factor": 0.51,
           "bars": 1000,
-          "trades": 57,
-          "win_rate": 15.8,
-          "pnl": -1135.7,
-          "profit_factor": 0.22
+          "filter_vetoes": 283
         },
         "TSLA": {
+          "trades": 28,
+          "win_rate": 32.1,
+          "pnl": -501.08,
+          "profit_factor": 0.47,
           "bars": 1000,
-          "trades": 78,
-          "win_rate": 14.1,
-          "pnl": -1466.36,
-          "profit_factor": 0.22
+          "filter_vetoes": 278
         },
         "US100": {
+          "trades": 23,
+          "win_rate": 17.4,
+          "pnl": -1072.38,
+          "profit_factor": 0.07,
           "bars": 1000,
-          "trades": 73,
-          "win_rate": 9.6,
-          "pnl": -2184.05,
-          "profit_factor": 0.05
+          "filter_vetoes": 318
         },
         "US500": {
+          "trades": 37,
+          "win_rate": 2.7,
+          "pnl": -3096.81,
+          "profit_factor": 0.0,
           "bars": 1000,
-          "trades": 75,
-          "win_rate": 1.3,
-          "pnl": -3899.39,
-          "profit_factor": 0.0
+          "filter_vetoes": 345
         }
       }
     },
     "scalp_ema_vwap_m5": {
+      "trades": 160,
+      "win_rate": 22.5,
+      "pnl": -7281.11,
+      "profit_factor": 0.14,
       "timeframe": "5m",
       "symbols_tested": [
         "BTCUSD",
@@ -2128,62 +2493,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 302,
-      "win_rate": 17.2,
-      "total_pnl": -11554.94,
+      "filter_vetoes": 1629,
       "per_symbol": {
         "BTCUSD": {
+          "trades": 23,
+          "win_rate": 34.8,
+          "pnl": -404.55,
+          "profit_factor": 0.44,
           "bars": 1000,
-          "trades": 62,
-          "win_rate": 16.1,
-          "pnl": -1147.1,
-          "profit_factor": 0.22
+          "filter_vetoes": 345
         },
         "EURUSD": {
-          "bars": 1000,
-          "trades": 65,
+          "trades": 30,
           "win_rate": 0.0,
-          "pnl": -5849.87,
-          "profit_factor": 0.0
+          "pnl": -3557.31,
+          "profit_factor": 0.0,
+          "bars": 1000,
+          "filter_vetoes": 384
         },
         "GOLD": {
+          "trades": 13,
+          "win_rate": 38.5,
+          "pnl": -203.98,
+          "profit_factor": 0.42,
           "bars": 1000,
-          "trades": 23,
-          "win_rate": 30.4,
-          "pnl": -562.05,
-          "profit_factor": 0.28
+          "filter_vetoes": 270
         },
         "NVDA": {
+          "trades": 18,
+          "win_rate": 27.8,
+          "pnl": -503.98,
+          "profit_factor": 0.27,
           "bars": 744,
-          "trades": 25,
-          "win_rate": 20.0,
-          "pnl": -286.5,
-          "profit_factor": 0.42
+          "filter_vetoes": 97
         },
         "TSLA": {
+          "trades": 24,
+          "win_rate": 33.3,
+          "pnl": -463.24,
+          "profit_factor": 0.45,
           "bars": 744,
-          "trades": 42,
-          "win_rate": 28.6,
-          "pnl": -914.21,
-          "profit_factor": 0.39
+          "filter_vetoes": 129
         },
         "US100": {
+          "trades": 21,
+          "win_rate": 28.6,
+          "pnl": -604.01,
+          "profit_factor": 0.16,
           "bars": 1000,
-          "trades": 43,
-          "win_rate": 27.9,
-          "pnl": -1071.2,
-          "profit_factor": 0.2
+          "filter_vetoes": 153
         },
         "US500": {
+          "trades": 31,
+          "win_rate": 12.9,
+          "pnl": -1544.03,
+          "profit_factor": 0.03,
           "bars": 1000,
-          "trades": 42,
-          "win_rate": 14.3,
-          "pnl": -1724.0,
-          "profit_factor": 0.03
+          "filter_vetoes": 251
         }
       }
     },
     "ema921_adx_dmi_m5": {
+      "trades": 21,
+      "win_rate": 28.6,
+      "pnl": -1109.11,
+      "profit_factor": 0.22,
       "timeframe": "5m",
       "symbols_tested": [
         "BTCUSD",
@@ -2194,62 +2568,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 41,
-      "win_rate": 19.5,
-      "total_pnl": -2605.16,
+      "filter_vetoes": 20,
       "per_symbol": {
         "BTCUSD": {
-          "bars": 1000,
-          "trades": 6,
+          "trades": 3,
           "win_rate": 0.0,
-          "pnl": -377.07,
-          "profit_factor": 0.0
+          "pnl": -205.64,
+          "profit_factor": 0.0,
+          "bars": 1000,
+          "filter_vetoes": 3
         },
         "EURUSD": {
-          "bars": 1000,
-          "trades": 6,
+          "trades": 3,
           "win_rate": 0.0,
-          "pnl": -1239.73,
-          "profit_factor": 0.0
+          "pnl": -580.36,
+          "profit_factor": 0.0,
+          "bars": 1000,
+          "filter_vetoes": 3
         },
         "GOLD": {
-          "bars": 1000,
-          "trades": 6,
+          "trades": 2,
           "win_rate": 0.0,
-          "pnl": -333.08,
-          "profit_factor": 0.0
+          "pnl": -142.45,
+          "profit_factor": 0.0,
+          "bars": 1000,
+          "filter_vetoes": 4
         },
         "NVDA": {
+          "trades": 6,
+          "win_rate": 33.3,
+          "pnl": -118.96,
+          "profit_factor": 0.44,
           "bars": 744,
-          "trades": 9,
-          "win_rate": 22.2,
-          "pnl": -270.72,
-          "profit_factor": 0.25
+          "filter_vetoes": 3
         },
         "TSLA": {
+          "trades": 4,
+          "win_rate": 50.0,
+          "pnl": -126.89,
+          "profit_factor": 0.54,
           "bars": 744,
-          "trades": 5,
-          "win_rate": 60.0,
-          "pnl": -80.84,
-          "profit_factor": 0.71
+          "filter_vetoes": 1
         },
         "US100": {
+          "trades": 2,
+          "win_rate": 100.0,
+          "pnl": 72.87,
+          "profit_factor": null,
           "bars": 1000,
-          "trades": 4,
-          "win_rate": 75.0,
-          "pnl": 22.54,
-          "profit_factor": 1.33
+          "filter_vetoes": 2
         },
         "US500": {
-          "bars": 1000,
-          "trades": 5,
+          "trades": 1,
           "win_rate": 0.0,
-          "pnl": -326.27,
-          "profit_factor": 0.0
+          "pnl": -7.67,
+          "profit_factor": 0.0,
+          "bars": 1000,
+          "filter_vetoes": 4
         }
       }
     },
     "ema921_adx_dmi_m15": {
+      "trades": 15,
+      "win_rate": 13.3,
+      "pnl": -755.73,
+      "profit_factor": 0.1,
       "timeframe": "15m",
       "symbols_tested": [
         "BTCUSD",
@@ -2260,62 +2643,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 36,
-      "win_rate": 13.9,
-      "total_pnl": -1621.57,
+      "filter_vetoes": 22,
       "per_symbol": {
         "BTCUSD": {
-          "bars": 1000,
-          "trades": 10,
-          "win_rate": 10.0,
-          "pnl": -313.37,
-          "profit_factor": 0.16
-        },
-        "EURUSD": {
-          "bars": 854,
-          "trades": 7,
-          "win_rate": 0.0,
-          "pnl": -729.4,
-          "profit_factor": 0.0
-        },
-        "GOLD": {
-          "bars": 819,
           "trades": 3,
           "win_rate": 33.3,
-          "pnl": -58.6,
-          "profit_factor": 0.44
+          "pnl": -48.17,
+          "profit_factor": 0.55,
+          "bars": 1000,
+          "filter_vetoes": 8
         },
-        "NVDA": {
-          "bars": 517,
+        "EURUSD": {
+          "trades": 4,
+          "win_rate": 0.0,
+          "pnl": -406.42,
+          "profit_factor": 0.0,
+          "bars": 854,
+          "filter_vetoes": 3
+        },
+        "GOLD": {
           "trades": 2,
           "win_rate": 0.0,
-          "pnl": -86.47,
-          "profit_factor": 0.0
+          "pnl": -105.03,
+          "profit_factor": 0.0,
+          "bars": 819,
+          "filter_vetoes": 1
+        },
+        "NVDA": {
+          "trades": 1,
+          "win_rate": 0.0,
+          "pnl": -49.42,
+          "profit_factor": 0.0,
+          "bars": 517,
+          "filter_vetoes": 1
         },
         "TSLA": {
+          "trades": 0,
+          "win_rate": null,
+          "pnl": 0.0,
+          "profit_factor": null,
           "bars": 517,
-          "trades": 2,
-          "win_rate": 50.0,
-          "pnl": 12.75,
-          "profit_factor": 1.29
+          "filter_vetoes": 2
         },
         "US100": {
+          "trades": 2,
+          "win_rate": 0.0,
+          "pnl": -58.53,
+          "profit_factor": 0.0,
           "bars": 846,
-          "trades": 6,
-          "win_rate": 16.7,
-          "pnl": -178.8,
-          "profit_factor": 0.2
+          "filter_vetoes": 4
         },
         "US500": {
+          "trades": 3,
+          "win_rate": 33.3,
+          "pnl": -88.16,
+          "profit_factor": 0.23,
           "bars": 846,
-          "trades": 6,
-          "win_rate": 16.7,
-          "pnl": -267.68,
-          "profit_factor": 0.09
+          "filter_vetoes": 3
         }
       }
     },
     "ema78_crossover_m5": {
+      "trades": 250,
+      "win_rate": 11.6,
+      "pnl": -9510.0,
+      "profit_factor": 0.09,
       "timeframe": "5m",
       "symbols_tested": [
         "BTCUSD",
@@ -2326,62 +2718,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 1305,
-      "win_rate": 3.8,
-      "total_pnl": -29901.06,
+      "filter_vetoes": 1055,
       "per_symbol": {
         "BTCUSD": {
+          "trades": 36,
+          "win_rate": 19.4,
+          "pnl": -821.37,
+          "profit_factor": 0.16,
           "bars": 1000,
-          "trades": 226,
-          "win_rate": 5.8,
-          "pnl": -3587.49,
-          "profit_factor": 0.07
+          "filter_vetoes": 190
         },
         "EURUSD": {
-          "bars": 1000,
-          "trades": 185,
+          "trades": 37,
           "win_rate": 0.0,
-          "pnl": -7902.49,
-          "profit_factor": 0.0
+          "pnl": -3621.18,
+          "profit_factor": 0.0,
+          "bars": 1000,
+          "filter_vetoes": 148
         },
         "GOLD": {
+          "trades": 28,
+          "win_rate": 10.7,
+          "pnl": -705.66,
+          "profit_factor": 0.1,
           "bars": 1000,
-          "trades": 229,
-          "win_rate": 2.6,
-          "pnl": -4038.67,
-          "profit_factor": 0.03
+          "filter_vetoes": 201
         },
         "NVDA": {
+          "trades": 46,
+          "win_rate": 13.0,
+          "pnl": -817.26,
+          "profit_factor": 0.34,
           "bars": 744,
-          "trades": 121,
-          "win_rate": 7.4,
-          "pnl": -2065.44,
-          "profit_factor": 0.19
+          "filter_vetoes": 75
         },
         "TSLA": {
+          "trades": 28,
+          "win_rate": 17.9,
+          "pnl": -716.9,
+          "profit_factor": 0.14,
           "bars": 744,
-          "trades": 114,
-          "win_rate": 5.3,
-          "pnl": -2376.51,
-          "profit_factor": 0.05
+          "filter_vetoes": 86
         },
         "US100": {
+          "trades": 33,
+          "win_rate": 15.2,
+          "pnl": -809.19,
+          "profit_factor": 0.1,
           "bars": 1000,
-          "trades": 215,
-          "win_rate": 4.7,
-          "pnl": -4136.35,
-          "profit_factor": 0.04
+          "filter_vetoes": 182
         },
         "US500": {
+          "trades": 42,
+          "win_rate": 7.1,
+          "pnl": -2018.45,
+          "profit_factor": 0.01,
           "bars": 1000,
-          "trades": 215,
-          "win_rate": 2.3,
-          "pnl": -5794.1,
-          "profit_factor": 0.01
+          "filter_vetoes": 173
         }
       }
     },
     "ema78_crossover_m15": {
+      "trades": 284,
+      "win_rate": 9.5,
+      "pnl": -7794.78,
+      "profit_factor": 0.12,
       "timeframe": "15m",
       "symbols_tested": [
         "BTCUSD",
@@ -2392,62 +2793,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 732,
-      "win_rate": 7.0,
-      "total_pnl": -16451.46,
+      "filter_vetoes": 448,
       "per_symbol": {
         "BTCUSD": {
+          "trades": 62,
+          "win_rate": 6.5,
+          "pnl": -1433.46,
+          "profit_factor": 0.05,
           "bars": 1000,
-          "trades": 145,
-          "win_rate": 6.2,
-          "pnl": -2462.27,
-          "profit_factor": 0.07
+          "filter_vetoes": 83
         },
         "EURUSD": {
-          "bars": 854,
-          "trades": 137,
+          "trades": 46,
           "win_rate": 0.0,
-          "pnl": -5786.05,
-          "profit_factor": 0.0
+          "pnl": -2746.08,
+          "profit_factor": 0.0,
+          "bars": 854,
+          "filter_vetoes": 91
         },
         "GOLD": {
+          "trades": 33,
+          "win_rate": 12.1,
+          "pnl": -701.1,
+          "profit_factor": 0.15,
           "bars": 819,
-          "trades": 114,
-          "win_rate": 7.9,
-          "pnl": -2003.8,
-          "profit_factor": 0.11
+          "filter_vetoes": 81
         },
         "NVDA": {
+          "trades": 30,
+          "win_rate": 20.0,
+          "pnl": -389.99,
+          "profit_factor": 0.48,
           "bars": 517,
-          "trades": 53,
-          "win_rate": 13.2,
-          "pnl": -706.71,
-          "profit_factor": 0.34
+          "filter_vetoes": 23
         },
         "TSLA": {
+          "trades": 29,
+          "win_rate": 17.2,
+          "pnl": -347.62,
+          "profit_factor": 0.43,
           "bars": 517,
-          "trades": 58,
-          "win_rate": 10.3,
-          "pnl": -911.18,
-          "profit_factor": 0.28
+          "filter_vetoes": 29
         },
         "US100": {
+          "trades": 43,
+          "win_rate": 9.3,
+          "pnl": -859.7,
+          "profit_factor": 0.12,
           "bars": 846,
-          "trades": 111,
-          "win_rate": 9.0,
-          "pnl": -1888.61,
-          "profit_factor": 0.11
+          "filter_vetoes": 68
         },
         "US500": {
+          "trades": 41,
+          "win_rate": 9.8,
+          "pnl": -1316.83,
+          "profit_factor": 0.05,
           "bars": 846,
-          "trades": 114,
-          "win_rate": 8.8,
-          "pnl": -2692.84,
-          "profit_factor": 0.05
+          "filter_vetoes": 73
         }
       }
     },
     "follow_the_trend_h4": {
+      "trades": 101,
+      "win_rate": 32.7,
+      "pnl": -142.09,
+      "profit_factor": 0.9,
       "timeframe": "4h",
       "symbols_tested": [
         "BTCUSD",
@@ -2458,62 +2868,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 137,
-      "win_rate": 35.8,
-      "total_pnl": -243.55,
+      "filter_vetoes": 48,
       "per_symbol": {
         "BTCUSD": {
+          "trades": 16,
+          "win_rate": 18.8,
+          "pnl": -131.76,
+          "profit_factor": 0.49,
           "bars": 858,
-          "trades": 23,
-          "win_rate": 34.8,
-          "pnl": -110.16,
-          "profit_factor": 0.67
+          "filter_vetoes": 9
         },
         "EURUSD": {
+          "trades": 16,
+          "win_rate": 18.8,
+          "pnl": -168.23,
+          "profit_factor": 0.41,
           "bars": 640,
-          "trades": 23,
-          "win_rate": 21.7,
-          "pnl": -278.94,
-          "profit_factor": 0.34
+          "filter_vetoes": 11
         },
         "GOLD": {
-          "bars": 636,
-          "trades": 22,
-          "win_rate": 40.9,
-          "pnl": 107.61,
-          "profit_factor": 1.46
-        },
-        "NVDA": {
-          "bars": 556,
-          "trades": 22,
-          "win_rate": 40.9,
-          "pnl": 81.24,
-          "profit_factor": 1.37
-        },
-        "TSLA": {
-          "bars": 556,
           "trades": 18,
           "win_rate": 38.9,
-          "pnl": 20.05,
-          "profit_factor": 1.08
+          "pnl": 52.91,
+          "profit_factor": 1.25,
+          "bars": 636,
+          "filter_vetoes": 5
+        },
+        "NVDA": {
+          "trades": 14,
+          "win_rate": 42.9,
+          "pnl": 78.85,
+          "profit_factor": 1.55,
+          "bars": 556,
+          "filter_vetoes": 10
+        },
+        "TSLA": {
+          "trades": 14,
+          "win_rate": 42.9,
+          "pnl": 61.04,
+          "profit_factor": 1.31,
+          "bars": 556,
+          "filter_vetoes": 4
         },
         "US100": {
+          "trades": 10,
+          "win_rate": 40.0,
+          "pnl": -21.09,
+          "profit_factor": 0.86,
           "bars": 636,
-          "trades": 13,
-          "win_rate": 38.5,
-          "pnl": -87.97,
-          "profit_factor": 0.59
+          "filter_vetoes": 3
         },
         "US500": {
+          "trades": 13,
+          "win_rate": 30.8,
+          "pnl": -13.81,
+          "profit_factor": 0.91,
           "bars": 636,
-          "trades": 16,
-          "win_rate": 37.5,
-          "pnl": 24.63,
-          "profit_factor": 1.13
+          "filter_vetoes": 6
         }
       }
     },
     "follow_the_trend_d1": {
+      "trades": 91,
+      "win_rate": 44.0,
+      "pnl": 292.27,
+      "profit_factor": 1.29,
       "timeframe": "1d",
       "symbols_tested": [
         "BTCUSD",
@@ -2524,116 +2943,134 @@
         "US100",
         "US500"
       ],
-      "total_trades": 121,
-      "win_rate": 41.3,
-      "total_pnl": 308.46,
+      "filter_vetoes": 48,
       "per_symbol": {
         "BTCUSD": {
+          "trades": 14,
+          "win_rate": 57.1,
+          "pnl": 167.89,
+          "profit_factor": 2.68,
           "bars": 852,
-          "trades": 20,
-          "win_rate": 50.0,
-          "pnl": 228.43,
-          "profit_factor": 2.54
+          "filter_vetoes": 8
         },
         "EURUSD": {
+          "trades": 14,
+          "win_rate": 50.0,
+          "pnl": 70.16,
+          "profit_factor": 1.54,
           "bars": 732,
-          "trades": 17,
-          "win_rate": 47.1,
-          "pnl": 130.57,
-          "profit_factor": 1.82
+          "filter_vetoes": 4
         },
         "GOLD": {
+          "trades": 15,
+          "win_rate": 46.7,
+          "pnl": 86.86,
+          "profit_factor": 1.5,
           "bars": 729,
-          "trades": 16,
-          "win_rate": 43.8,
-          "pnl": 88.88,
-          "profit_factor": 1.52
+          "filter_vetoes": 4
         },
         "NVDA": {
-          "bars": 586,
-          "trades": 12,
+          "trades": 6,
           "win_rate": 16.7,
-          "pnl": -95.4,
-          "profit_factor": 0.46
+          "pnl": -45.22,
+          "profit_factor": 0.49,
+          "bars": 586,
+          "filter_vetoes": 8
         },
         "TSLA": {
+          "trades": 13,
+          "win_rate": 38.5,
+          "pnl": 44.19,
+          "profit_factor": 1.45,
           "bars": 586,
-          "trades": 19,
-          "win_rate": 47.4,
-          "pnl": 110.79,
-          "profit_factor": 1.75
+          "filter_vetoes": 7
         },
         "US100": {
+          "trades": 12,
+          "win_rate": 33.3,
+          "pnl": -57.5,
+          "profit_factor": 0.72,
           "bars": 731,
-          "trades": 16,
-          "win_rate": 31.2,
-          "pnl": -126.66,
-          "profit_factor": 0.54
+          "filter_vetoes": 9
         },
         "US500": {
+          "trades": 17,
+          "win_rate": 47.1,
+          "pnl": 25.88,
+          "profit_factor": 1.12,
           "bars": 731,
-          "trades": 21,
-          "win_rate": 42.9,
-          "pnl": -28.16,
-          "profit_factor": 0.9
+          "filter_vetoes": 8
         }
       }
     },
     "goldmine_xauusd": {
+      "trades": 0,
+      "win_rate": null,
+      "pnl": 0.0,
+      "profit_factor": null,
       "timeframe": "1d",
       "symbols_tested": [
         "GOLD"
       ],
-      "total_trades": 0,
-      "win_rate": null,
-      "total_pnl": 0.0,
+      "filter_vetoes": 0,
       "per_symbol": {
         "GOLD": {
-          "bars": 729,
           "trades": 0,
           "win_rate": null,
           "pnl": 0.0,
-          "profit_factor": 0.0
+          "profit_factor": null,
+          "bars": 729,
+          "filter_vetoes": 0
         }
       }
     },
     "speculative_zigzag_rsi": {
+      "trades": 0,
+      "win_rate": null,
+      "pnl": 0.0,
+      "profit_factor": null,
       "timeframe": "15m",
       "symbols_tested": [
         "EURUSD"
       ],
-      "total_trades": 0,
-      "win_rate": null,
-      "total_pnl": 0.0,
+      "filter_vetoes": 0,
       "per_symbol": {
         "EURUSD": {
-          "bars": 854,
           "trades": 0,
           "win_rate": null,
           "pnl": 0.0,
-          "profit_factor": 0.0
+          "profit_factor": null,
+          "bars": 854,
+          "filter_vetoes": 0
         }
       }
     },
     "parsar_awesome": {
+      "trades": 23,
+      "win_rate": 8.7,
+      "pnl": -891.83,
+      "profit_factor": 0.09,
       "timeframe": "30m",
       "symbols_tested": [
         "EURUSD"
       ],
-      "total_trades": 32,
-      "win_rate": 9.4,
-      "total_pnl": -1248.0,
+      "filter_vetoes": 77,
       "per_symbol": {
         "EURUSD": {
+          "trades": 23,
+          "win_rate": 8.7,
+          "pnl": -891.83,
+          "profit_factor": 0.09,
           "bars": 663,
-          "trades": 32,
-          "win_rate": 9.4,
-          "pnl": -1248.0,
-          "profit_factor": 0.08
+          "filter_vetoes": 77
         }
       }
     },
     "cci_ema_psar": {
+      "trades": 68,
+      "win_rate": 27.9,
+      "pnl": -938.2,
+      "profit_factor": 0.38,
       "timeframe": "1h",
       "symbols_tested": [
         "BTCUSD",
@@ -2644,62 +3081,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 154,
-      "win_rate": 25.3,
-      "total_pnl": -1662.79,
+      "filter_vetoes": 88,
       "per_symbol": {
         "BTCUSD": {
+          "trades": 16,
+          "win_rate": 37.5,
+          "pnl": -74.77,
+          "profit_factor": 0.69,
           "bars": 877,
-          "trades": 28,
-          "win_rate": 32.1,
-          "pnl": -122.08,
-          "profit_factor": 0.69
+          "filter_vetoes": 12
         },
         "EURUSD": {
+          "trades": 7,
+          "win_rate": 42.9,
+          "pnl": -124.65,
+          "profit_factor": 0.4,
           "bars": 640,
-          "trades": 24,
-          "win_rate": 20.8,
-          "pnl": -558.54,
-          "profit_factor": 0.17
+          "filter_vetoes": 18
         },
         "GOLD": {
+          "trades": 8,
+          "win_rate": 25.0,
+          "pnl": -75.25,
+          "profit_factor": 0.44,
           "bars": 609,
-          "trades": 19,
-          "win_rate": 31.6,
-          "pnl": -119.21,
-          "profit_factor": 0.65
+          "filter_vetoes": 11
         },
         "NVDA": {
+          "trades": 10,
+          "win_rate": 0.0,
+          "pnl": -276.86,
+          "profit_factor": 0.0,
           "bars": 532,
-          "trades": 29,
-          "win_rate": 13.8,
-          "pnl": -329.23,
-          "profit_factor": 0.37
+          "filter_vetoes": 19
         },
         "TSLA": {
-          "bars": 532,
-          "trades": 15,
+          "trades": 10,
           "win_rate": 40.0,
-          "pnl": -71.62,
-          "profit_factor": 0.77
+          "pnl": -131.9,
+          "profit_factor": 0.49,
+          "bars": 532,
+          "filter_vetoes": 5
         },
         "US100": {
+          "trades": 10,
+          "win_rate": 30.0,
+          "pnl": -70.75,
+          "profit_factor": 0.59,
           "bars": 633,
-          "trades": 21,
-          "win_rate": 33.3,
-          "pnl": -134.66,
-          "profit_factor": 0.61
+          "filter_vetoes": 11
         },
         "US500": {
+          "trades": 7,
+          "win_rate": 14.3,
+          "pnl": -184.01,
+          "profit_factor": 0.16,
           "bars": 633,
-          "trades": 18,
-          "win_rate": 11.1,
-          "pnl": -327.45,
-          "profit_factor": 0.17
+          "filter_vetoes": 12
         }
       }
     },
     "ema_adx_macd_contrarian": {
+      "trades": 102,
+      "win_rate": 47.1,
+      "pnl": -669.04,
+      "profit_factor": 0.58,
       "timeframe": "4h",
       "symbols_tested": [
         "BTCUSD",
@@ -2710,62 +3156,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 140,
-      "win_rate": 46.4,
-      "total_pnl": -786.94,
+      "filter_vetoes": 46,
       "per_symbol": {
         "BTCUSD": {
+          "trades": 15,
+          "win_rate": 60.0,
+          "pnl": 21.77,
+          "profit_factor": 1.12,
           "bars": 858,
-          "trades": 22,
-          "win_rate": 50.0,
-          "pnl": 5.45,
-          "profit_factor": 1.02
+          "filter_vetoes": 9
         },
         "EURUSD": {
-          "bars": 640,
-          "trades": 26,
-          "win_rate": 34.6,
-          "pnl": -262.62,
-          "profit_factor": 0.33
-        },
-        "GOLD": {
-          "bars": 636,
-          "trades": 22,
-          "win_rate": 54.5,
-          "pnl": -146.2,
-          "profit_factor": 0.59
-        },
-        "NVDA": {
-          "bars": 556,
-          "trades": 23,
-          "win_rate": 56.5,
-          "pnl": -43.52,
-          "profit_factor": 0.83
-        },
-        "TSLA": {
-          "bars": 556,
-          "trades": 16,
-          "win_rate": 56.2,
-          "pnl": -48.63,
-          "profit_factor": 0.8
-        },
-        "US100": {
-          "bars": 636,
-          "trades": 14,
-          "win_rate": 35.7,
-          "pnl": -123.4,
-          "profit_factor": 0.53
-        },
-        "US500": {
-          "bars": 636,
           "trades": 17,
           "win_rate": 35.3,
-          "pnl": -168.02,
-          "profit_factor": 0.42
+          "pnl": -209.55,
+          "profit_factor": 0.21,
+          "bars": 640,
+          "filter_vetoes": 11
+        },
+        "GOLD": {
+          "trades": 18,
+          "win_rate": 55.6,
+          "pnl": -73.42,
+          "profit_factor": 0.73,
+          "bars": 636,
+          "filter_vetoes": 4
+        },
+        "NVDA": {
+          "trades": 14,
+          "win_rate": 57.1,
+          "pnl": -55.39,
+          "profit_factor": 0.66,
+          "bars": 556,
+          "filter_vetoes": 10
+        },
+        "TSLA": {
+          "trades": 13,
+          "win_rate": 53.8,
+          "pnl": -51.91,
+          "profit_factor": 0.76,
+          "bars": 556,
+          "filter_vetoes": 3
+        },
+        "US100": {
+          "trades": 11,
+          "win_rate": 27.3,
+          "pnl": -167.36,
+          "profit_factor": 0.34,
+          "bars": 636,
+          "filter_vetoes": 3
+        },
+        "US500": {
+          "trades": 14,
+          "win_rate": 35.7,
+          "pnl": -133.17,
+          "profit_factor": 0.4,
+          "bars": 636,
+          "filter_vetoes": 6
         }
       }
     },
     "momentum_forex": {
+      "trades": 74,
+      "win_rate": 16.2,
+      "pnl": -1965.8,
+      "profit_factor": 0.22,
       "timeframe": "15m",
       "symbols_tested": [
         "BTCUSD",
@@ -2776,62 +3231,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 173,
-      "win_rate": 19.1,
-      "total_pnl": -3957.48,
+      "filter_vetoes": 255,
       "per_symbol": {
         "BTCUSD": {
+          "trades": 14,
+          "win_rate": 35.7,
+          "pnl": -119.18,
+          "profit_factor": 0.56,
           "bars": 1000,
-          "trades": 26,
-          "win_rate": 38.5,
-          "pnl": -245.3,
-          "profit_factor": 0.48
+          "filter_vetoes": 40
         },
         "EURUSD": {
+          "trades": 11,
+          "win_rate": 0.0,
+          "pnl": -817.38,
+          "profit_factor": 0.0,
           "bars": 854,
-          "trades": 26,
-          "win_rate": 3.8,
-          "pnl": -1478.59,
-          "profit_factor": 0.0
+          "filter_vetoes": 46
         },
         "GOLD": {
+          "trades": 12,
+          "win_rate": 16.7,
+          "pnl": -248.85,
+          "profit_factor": 0.19,
           "bars": 819,
-          "trades": 31,
-          "win_rate": 19.4,
-          "pnl": -489.09,
-          "profit_factor": 0.26
+          "filter_vetoes": 52
         },
         "NVDA": {
+          "trades": 8,
+          "win_rate": 25.0,
+          "pnl": 53.33,
+          "profit_factor": 1.3,
           "bars": 517,
-          "trades": 17,
-          "win_rate": 23.5,
-          "pnl": -15.44,
-          "profit_factor": 0.95
+          "filter_vetoes": 16
         },
         "TSLA": {
+          "trades": 7,
+          "win_rate": 14.3,
+          "pnl": -158.39,
+          "profit_factor": 0.35,
           "bars": 517,
-          "trades": 18,
-          "win_rate": 11.1,
-          "pnl": -447.51,
-          "profit_factor": 0.17
+          "filter_vetoes": 18
         },
         "US100": {
+          "trades": 10,
+          "win_rate": 0.0,
+          "pnl": -296.02,
+          "profit_factor": 0.0,
           "bars": 846,
-          "trades": 30,
-          "win_rate": 16.7,
-          "pnl": -639.26,
-          "profit_factor": 0.1
+          "filter_vetoes": 43
         },
         "US500": {
+          "trades": 12,
+          "win_rate": 16.7,
+          "pnl": -379.31,
+          "profit_factor": 0.11,
           "bars": 846,
-          "trades": 25,
-          "win_rate": 20.0,
-          "pnl": -642.3,
-          "profit_factor": 0.11
+          "filter_vetoes": 40
         }
       }
     },
     "psar_ao_ac": {
+      "trades": 0,
+      "win_rate": null,
+      "pnl": 0.0,
+      "profit_factor": null,
       "timeframe": "1h",
       "symbols_tested": [
         "BTCUSD",
@@ -2842,62 +3306,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 0,
-      "win_rate": null,
-      "total_pnl": 0.0,
+      "filter_vetoes": 0,
       "per_symbol": {
         "BTCUSD": {
-          "bars": 877,
           "trades": 0,
           "win_rate": null,
           "pnl": 0.0,
-          "profit_factor": 0.0
+          "profit_factor": null,
+          "bars": 877,
+          "filter_vetoes": 0
         },
         "EURUSD": {
-          "bars": 640,
           "trades": 0,
           "win_rate": null,
           "pnl": 0.0,
-          "profit_factor": 0.0
+          "profit_factor": null,
+          "bars": 640,
+          "filter_vetoes": 0
         },
         "GOLD": {
-          "bars": 609,
           "trades": 0,
           "win_rate": null,
           "pnl": 0.0,
-          "profit_factor": 0.0
+          "profit_factor": null,
+          "bars": 609,
+          "filter_vetoes": 0
         },
         "NVDA": {
-          "bars": 532,
           "trades": 0,
           "win_rate": null,
           "pnl": 0.0,
-          "profit_factor": 0.0
+          "profit_factor": null,
+          "bars": 532,
+          "filter_vetoes": 0
         },
         "TSLA": {
-          "bars": 532,
           "trades": 0,
           "win_rate": null,
           "pnl": 0.0,
-          "profit_factor": 0.0
+          "profit_factor": null,
+          "bars": 532,
+          "filter_vetoes": 0
         },
         "US100": {
-          "bars": 633,
           "trades": 0,
           "win_rate": null,
           "pnl": 0.0,
-          "profit_factor": 0.0
+          "profit_factor": null,
+          "bars": 633,
+          "filter_vetoes": 0
         },
         "US500": {
-          "bars": 633,
           "trades": 0,
           "win_rate": null,
           "pnl": 0.0,
-          "profit_factor": 0.0
+          "profit_factor": null,
+          "bars": 633,
+          "filter_vetoes": 0
         }
       }
     },
     "cci_ema_fixed": {
+      "trades": 50,
+      "win_rate": 36.0,
+      "pnl": -352.42,
+      "profit_factor": 0.66,
       "timeframe": "30m",
       "symbols_tested": [
         "BTCUSD",
@@ -2908,62 +3381,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 172,
-      "win_rate": 17.4,
-      "total_pnl": -2983.12,
+      "filter_vetoes": 125,
       "per_symbol": {
         "BTCUSD": {
+          "trades": 6,
+          "win_rate": 66.7,
+          "pnl": 146.64,
+          "profit_factor": 6.29,
           "bars": 939,
-          "trades": 23,
-          "win_rate": 21.7,
-          "pnl": -243.69,
-          "profit_factor": 0.48
+          "filter_vetoes": 17
         },
         "EURUSD": {
+          "trades": 6,
+          "win_rate": 16.7,
+          "pnl": -167.59,
+          "profit_factor": 0.25,
           "bars": 663,
-          "trades": 33,
-          "win_rate": 9.1,
-          "pnl": -1145.33,
-          "profit_factor": 0.06
+          "filter_vetoes": 30
         },
         "GOLD": {
+          "trades": 7,
+          "win_rate": 42.9,
+          "pnl": -58.78,
+          "profit_factor": 0.64,
           "bars": 635,
-          "trades": 25,
-          "win_rate": 20.0,
-          "pnl": -357.68,
-          "profit_factor": 0.35
+          "filter_vetoes": 18
         },
         "NVDA": {
+          "trades": 7,
+          "win_rate": 28.6,
+          "pnl": -18.54,
+          "profit_factor": 0.82,
           "bars": 571,
-          "trades": 19,
-          "win_rate": 21.1,
-          "pnl": -142.96,
-          "profit_factor": 0.55
+          "filter_vetoes": 12
         },
         "TSLA": {
-          "bars": 573,
-          "trades": 14,
+          "trades": 7,
           "win_rate": 28.6,
-          "pnl": -178.73,
-          "profit_factor": 0.44
+          "pnl": -92.98,
+          "profit_factor": 0.48,
+          "bars": 573,
+          "filter_vetoes": 7
         },
         "US100": {
+          "trades": 10,
+          "win_rate": 40.0,
+          "pnl": -39.44,
+          "profit_factor": 0.77,
           "bars": 657,
-          "trades": 26,
-          "win_rate": 23.1,
-          "pnl": -243.22,
-          "profit_factor": 0.4
+          "filter_vetoes": 16
         },
         "US500": {
+          "trades": 7,
+          "win_rate": 28.6,
+          "pnl": -121.72,
+          "profit_factor": 0.27,
           "bars": 657,
-          "trades": 32,
-          "win_rate": 9.4,
-          "pnl": -671.52,
-          "profit_factor": 0.07
+          "filter_vetoes": 25
         }
       }
     },
     "ema100_dual_tf": {
+      "trades": 0,
+      "win_rate": null,
+      "pnl": 0.0,
+      "profit_factor": null,
       "timeframe": "15m",
       "symbols_tested": [
         "BTCUSD",
@@ -2974,62 +3456,72 @@
         "US100",
         "US500"
       ],
-      "total_trades": 0,
-      "win_rate": null,
-      "total_pnl": 0.0,
+      "filter_vetoes": 0,
       "per_symbol": {
         "BTCUSD": {
-          "bars": 1000,
           "trades": 0,
           "win_rate": null,
           "pnl": 0.0,
-          "profit_factor": 0.0
+          "profit_factor": null,
+          "bars": 1000,
+          "filter_vetoes": 0
         },
         "EURUSD": {
-          "bars": 854,
           "trades": 0,
           "win_rate": null,
           "pnl": 0.0,
-          "profit_factor": 0.0
+          "profit_factor": null,
+          "bars": 854,
+          "filter_vetoes": 0
         },
         "GOLD": {
-          "bars": 819,
           "trades": 0,
           "win_rate": null,
           "pnl": 0.0,
-          "profit_factor": 0.0
+          "profit_factor": null,
+          "bars": 819,
+          "filter_vetoes": 0
         },
         "NVDA": {
-          "bars": 517,
           "trades": 0,
           "win_rate": null,
           "pnl": 0.0,
-          "profit_factor": 0.0
+          "profit_factor": null,
+          "bars": 517,
+          "filter_vetoes": 0
         },
         "TSLA": {
-          "bars": 517,
           "trades": 0,
           "win_rate": null,
           "pnl": 0.0,
-          "profit_factor": 0.0
+          "profit_factor": null,
+          "bars": 517,
+          "filter_vetoes": 0
         },
         "US100": {
-          "bars": 846,
           "trades": 0,
           "win_rate": null,
           "pnl": 0.0,
-          "profit_factor": 0.0
+          "profit_factor": null,
+          "bars": 846,
+          "filter_vetoes": 0
         },
         "US500": {
-          "bars": 846,
           "trades": 0,
           "win_rate": null,
           "pnl": 0.0,
-          "profit_factor": 0.0
+          "profit_factor": null,
+          "bars": 846,
+          "filter_vetoes": 0
         }
-      }
+      },
+      "note": "gates entry on a confirm_timeframe='1h' fetch that engine.run() doesn't replay (no cross-timeframe support in the generic backtest loop) \u2014 this 0 reflects that gap, not a real absence of setups"
     },
     "ichimoku_awesome": {
+      "trades": 0,
+      "win_rate": null,
+      "pnl": 0.0,
+      "profit_factor": null,
       "timeframe": "1h",
       "symbols_tested": [
         "BTCUSD",
@@ -3040,62 +3532,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 0,
-      "win_rate": null,
-      "total_pnl": 0.0,
+      "filter_vetoes": 0,
       "per_symbol": {
         "BTCUSD": {
-          "bars": 877,
           "trades": 0,
           "win_rate": null,
           "pnl": 0.0,
-          "profit_factor": 0.0
+          "profit_factor": null,
+          "bars": 877,
+          "filter_vetoes": 0
         },
         "EURUSD": {
-          "bars": 640,
           "trades": 0,
           "win_rate": null,
           "pnl": 0.0,
-          "profit_factor": 0.0
+          "profit_factor": null,
+          "bars": 640,
+          "filter_vetoes": 0
         },
         "GOLD": {
-          "bars": 609,
           "trades": 0,
           "win_rate": null,
           "pnl": 0.0,
-          "profit_factor": 0.0
+          "profit_factor": null,
+          "bars": 609,
+          "filter_vetoes": 0
         },
         "NVDA": {
-          "bars": 532,
           "trades": 0,
           "win_rate": null,
           "pnl": 0.0,
-          "profit_factor": 0.0
+          "profit_factor": null,
+          "bars": 532,
+          "filter_vetoes": 0
         },
         "TSLA": {
-          "bars": 532,
           "trades": 0,
           "win_rate": null,
           "pnl": 0.0,
-          "profit_factor": 0.0
+          "profit_factor": null,
+          "bars": 532,
+          "filter_vetoes": 0
         },
         "US100": {
-          "bars": 633,
           "trades": 0,
           "win_rate": null,
           "pnl": 0.0,
-          "profit_factor": 0.0
+          "profit_factor": null,
+          "bars": 633,
+          "filter_vetoes": 0
         },
         "US500": {
-          "bars": 633,
           "trades": 0,
           "win_rate": null,
           "pnl": 0.0,
-          "profit_factor": 0.0
+          "profit_factor": null,
+          "bars": 633,
+          "filter_vetoes": 0
         }
       }
     },
     "scalp_macd_stoch_10pt": {
+      "trades": 0,
+      "win_rate": null,
+      "pnl": 0.0,
+      "profit_factor": null,
       "timeframe": "1m",
       "symbols_tested": [
         "BTCUSD",
@@ -3106,62 +3607,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 0,
-      "win_rate": null,
-      "total_pnl": 0.0,
+      "filter_vetoes": 0,
       "per_symbol": {
         "BTCUSD": {
-          "bars": 1000,
           "trades": 0,
           "win_rate": null,
           "pnl": 0.0,
-          "profit_factor": 0.0
+          "profit_factor": null,
+          "bars": 1000,
+          "filter_vetoes": 0
         },
         "EURUSD": {
-          "bars": 1000,
           "trades": 0,
           "win_rate": null,
           "pnl": 0.0,
-          "profit_factor": 0.0
+          "profit_factor": null,
+          "bars": 1000,
+          "filter_vetoes": 0
         },
         "GOLD": {
-          "bars": 1000,
           "trades": 0,
           "win_rate": null,
           "pnl": 0.0,
-          "profit_factor": 0.0
+          "profit_factor": null,
+          "bars": 1000,
+          "filter_vetoes": 0
         },
         "NVDA": {
-          "bars": 1000,
           "trades": 0,
           "win_rate": null,
           "pnl": 0.0,
-          "profit_factor": 0.0
+          "profit_factor": null,
+          "bars": 1000,
+          "filter_vetoes": 0
         },
         "TSLA": {
-          "bars": 1000,
           "trades": 0,
           "win_rate": null,
           "pnl": 0.0,
-          "profit_factor": 0.0
+          "profit_factor": null,
+          "bars": 1000,
+          "filter_vetoes": 0
         },
         "US100": {
-          "bars": 1000,
           "trades": 0,
           "win_rate": null,
           "pnl": 0.0,
-          "profit_factor": 0.0
+          "profit_factor": null,
+          "bars": 1000,
+          "filter_vetoes": 0
         },
         "US500": {
-          "bars": 1000,
           "trades": 0,
           "win_rate": null,
           "pnl": 0.0,
-          "profit_factor": 0.0
+          "profit_factor": null,
+          "bars": 1000,
+          "filter_vetoes": 0
         }
       }
     },
     "ema200_awesome": {
+      "trades": 89,
+      "win_rate": 24.7,
+      "pnl": -1443.86,
+      "profit_factor": 0.33,
       "timeframe": "1h",
       "symbols_tested": [
         "BTCUSD",
@@ -3172,62 +3682,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 130,
-      "win_rate": 25.4,
-      "total_pnl": -1614.63,
+      "filter_vetoes": 398,
       "per_symbol": {
         "BTCUSD": {
+          "trades": 17,
+          "win_rate": 41.2,
+          "pnl": -69.2,
+          "profit_factor": 0.74,
           "bars": 877,
-          "trades": 22,
-          "win_rate": 27.3,
-          "pnl": -174.24,
-          "profit_factor": 0.58
+          "filter_vetoes": 51
         },
         "EURUSD": {
+          "trades": 13,
+          "win_rate": 0.0,
+          "pnl": -611.66,
+          "profit_factor": 0.0,
           "bars": 640,
-          "trades": 21,
-          "win_rate": 4.8,
-          "pnl": -764.72,
-          "profit_factor": 0.05
+          "filter_vetoes": 87
         },
         "GOLD": {
+          "trades": 12,
+          "win_rate": 33.3,
+          "pnl": -111.33,
+          "profit_factor": 0.59,
           "bars": 609,
-          "trades": 19,
-          "win_rate": 26.3,
-          "pnl": -200.39,
-          "profit_factor": 0.48
+          "filter_vetoes": 71
         },
         "NVDA": {
+          "trades": 12,
+          "win_rate": 16.7,
+          "pnl": -171.95,
+          "profit_factor": 0.22,
           "bars": 532,
-          "trades": 18,
-          "win_rate": 22.2,
-          "pnl": -152.11,
-          "profit_factor": 0.5
+          "filter_vetoes": 50
         },
         "TSLA": {
+          "trades": 9,
+          "win_rate": 33.3,
+          "pnl": -56.77,
+          "profit_factor": 0.61,
           "bars": 532,
-          "trades": 16,
-          "win_rate": 56.2,
-          "pnl": 94.48,
-          "profit_factor": 1.49
+          "filter_vetoes": 41
         },
         "US100": {
+          "trades": 15,
+          "win_rate": 26.7,
+          "pnl": -138.37,
+          "profit_factor": 0.54,
           "bars": 633,
-          "trades": 20,
-          "win_rate": 25.0,
-          "pnl": -187.92,
-          "profit_factor": 0.52
+          "filter_vetoes": 52
         },
         "US500": {
+          "trades": 11,
+          "win_rate": 18.2,
+          "pnl": -284.59,
+          "profit_factor": 0.18,
           "bars": 633,
-          "trades": 14,
-          "win_rate": 21.4,
-          "pnl": -229.73,
-          "profit_factor": 0.29
+          "filter_vetoes": 46
         }
       }
     },
     "bb_williams_rsi_ranging": {
+      "trades": 0,
+      "win_rate": null,
+      "pnl": 0.0,
+      "profit_factor": null,
       "timeframe": "15m",
       "symbols_tested": [
         "BTCUSD",
@@ -3238,62 +3757,71 @@
         "US100",
         "US500"
       ],
-      "total_trades": 0,
-      "win_rate": null,
-      "total_pnl": 0.0,
+      "filter_vetoes": 0,
       "per_symbol": {
         "BTCUSD": {
-          "bars": 1000,
           "trades": 0,
           "win_rate": null,
           "pnl": 0.0,
-          "profit_factor": 0.0
+          "profit_factor": null,
+          "bars": 1000,
+          "filter_vetoes": 0
         },
         "EURUSD": {
-          "bars": 854,
           "trades": 0,
           "win_rate": null,
           "pnl": 0.0,
-          "profit_factor": 0.0
+          "profit_factor": null,
+          "bars": 854,
+          "filter_vetoes": 0
         },
         "GOLD": {
-          "bars": 819,
           "trades": 0,
           "win_rate": null,
           "pnl": 0.0,
-          "profit_factor": 0.0
+          "profit_factor": null,
+          "bars": 819,
+          "filter_vetoes": 0
         },
         "NVDA": {
-          "bars": 517,
           "trades": 0,
           "win_rate": null,
           "pnl": 0.0,
-          "profit_factor": 0.0
+          "profit_factor": null,
+          "bars": 517,
+          "filter_vetoes": 0
         },
         "TSLA": {
-          "bars": 517,
           "trades": 0,
           "win_rate": null,
           "pnl": 0.0,
-          "profit_factor": 0.0
+          "profit_factor": null,
+          "bars": 517,
+          "filter_vetoes": 0
         },
         "US100": {
-          "bars": 846,
           "trades": 0,
           "win_rate": null,
           "pnl": 0.0,
-          "profit_factor": 0.0
+          "profit_factor": null,
+          "bars": 846,
+          "filter_vetoes": 0
         },
         "US500": {
-          "bars": 846,
           "trades": 0,
           "win_rate": null,
           "pnl": 0.0,
-          "profit_factor": 0.0
+          "profit_factor": null,
+          "bars": 846,
+          "filter_vetoes": 0
         }
       }
     },
     "triple_sma": {
+      "trades": 39,
+      "win_rate": 33.3,
+      "pnl": -436.77,
+      "profit_factor": 0.51,
       "timeframe": "4h",
       "symbols_tested": [
         "BTCUSD",
@@ -3304,64 +3832,73 @@
         "US100",
         "US500"
       ],
-      "total_trades": 50,
-      "win_rate": 30.0,
-      "total_pnl": -606.64,
+      "filter_vetoes": 11,
       "per_symbol": {
         "BTCUSD": {
+          "trades": 7,
+          "win_rate": 57.1,
+          "pnl": 24.09,
+          "profit_factor": 1.25,
           "bars": 858,
-          "trades": 8,
-          "win_rate": 50.0,
-          "pnl": 8.29,
-          "profit_factor": 1.07
+          "filter_vetoes": 1
         },
         "EURUSD": {
+          "trades": 5,
+          "win_rate": 20.0,
+          "pnl": -193.03,
+          "profit_factor": 0.02,
           "bars": 640,
-          "trades": 8,
-          "win_rate": 12.5,
-          "pnl": -286.86,
-          "profit_factor": 0.01
+          "filter_vetoes": 3
         },
         "GOLD": {
+          "trades": 6,
+          "win_rate": 33.3,
+          "pnl": -47.92,
+          "profit_factor": 0.66,
           "bars": 636,
-          "trades": 8,
-          "win_rate": 37.5,
-          "pnl": -52.29,
-          "profit_factor": 0.71
+          "filter_vetoes": 2
         },
         "NVDA": {
-          "bars": 556,
           "trades": 6,
           "win_rate": 50.0,
           "pnl": 4.1,
-          "profit_factor": 1.04
+          "profit_factor": 1.04,
+          "bars": 556,
+          "filter_vetoes": 0
         },
         "TSLA": {
+          "trades": 5,
+          "win_rate": 40.0,
+          "pnl": 0.94,
+          "profit_factor": 1.01,
           "bars": 556,
-          "trades": 7,
-          "win_rate": 42.9,
-          "pnl": 17.37,
-          "profit_factor": 1.16
+          "filter_vetoes": 2
         },
         "US100": {
-          "bars": 636,
-          "trades": 8,
+          "trades": 6,
           "win_rate": 0.0,
-          "pnl": -206.79,
-          "profit_factor": 0.0
+          "pnl": -163.27,
+          "profit_factor": 0.0,
+          "bars": 636,
+          "filter_vetoes": 2
         },
         "US500": {
+          "trades": 4,
+          "win_rate": 25.0,
+          "pnl": -61.68,
+          "profit_factor": 0.38,
           "bars": 636,
-          "trades": 5,
-          "win_rate": 20.0,
-          "pnl": -90.46,
-          "profit_factor": 0.3
+          "filter_vetoes": 1
         }
       }
     }
   },
   "consensus_by_timeframe": {
     "1h": {
+      "trades": 152,
+      "win_rate": 25.0,
+      "pnl": -2804.96,
+      "profit_factor": 0.38,
       "constituents": [
         "trend_following",
         "hma_dc_h1",
@@ -3376,48 +3913,64 @@
         "US100",
         "US500"
       ],
-      "total_trades": 258,
-      "win_rate": 21.3,
-      "total_pnl": -4201.78,
+      "filter_vetoes": 1136,
       "per_symbol": {
         "BTCUSD": {
-          "trades": 53,
-          "win_rate": 22.6,
-          "pnl": -631.84
+          "trades": 28,
+          "win_rate": 35.7,
+          "pnl": 17.64,
+          "profit_factor": 1.04,
+          "filter_vetoes": 217
         },
         "EURUSD": {
-          "trades": 41,
-          "win_rate": 7.3,
-          "pnl": -1656.4
+          "trades": 23,
+          "win_rate": 0.0,
+          "pnl": -1382.88,
+          "profit_factor": 0.0,
+          "filter_vetoes": 185
         },
         "GOLD": {
-          "trades": 30,
-          "win_rate": 23.3,
-          "pnl": -232.94
+          "trades": 17,
+          "win_rate": 41.2,
+          "pnl": 55.34,
+          "profit_factor": 1.15,
+          "filter_vetoes": 148
         },
         "NVDA": {
-          "trades": 30,
-          "win_rate": 26.7,
-          "pnl": -277.74
+          "trades": 19,
+          "win_rate": 15.8,
+          "pnl": -376.02,
+          "profit_factor": 0.22,
+          "filter_vetoes": 168
         },
         "TSLA": {
-          "trades": 31,
-          "win_rate": 38.7,
-          "pnl": -249.98
+          "trades": 24,
+          "win_rate": 37.5,
+          "pnl": -365.02,
+          "profit_factor": 0.41,
+          "filter_vetoes": 105
         },
         "US100": {
-          "trades": 38,
-          "win_rate": 21.1,
-          "pnl": -402.92
+          "trades": 21,
+          "win_rate": 28.6,
+          "pnl": -214.89,
+          "profit_factor": 0.61,
+          "filter_vetoes": 165
         },
         "US500": {
-          "trades": 35,
-          "win_rate": 14.3,
-          "pnl": -749.97
+          "trades": 20,
+          "win_rate": 15.0,
+          "pnl": -539.13,
+          "profit_factor": 0.1,
+          "filter_vetoes": 148
         }
       }
     },
     "15m": {
+      "trades": 284,
+      "win_rate": 20.1,
+      "pnl": -5757.4,
+      "profit_factor": 0.15,
       "constituents": [
         "mean_reversion",
         "multi_bb",
@@ -3435,48 +3988,64 @@
         "US100",
         "US500"
       ],
-      "total_trades": 565,
-      "win_rate": 21.2,
-      "total_pnl": -10197.07,
+      "filter_vetoes": 637,
       "per_symbol": {
         "BTCUSD": {
-          "trades": 109,
-          "win_rate": 24.8,
-          "pnl": -1281.36
+          "trades": 58,
+          "win_rate": 20.7,
+          "pnl": -893.94,
+          "profit_factor": 0.18,
+          "filter_vetoes": 128
         },
         "EURUSD": {
-          "trades": 90,
+          "trades": 43,
           "win_rate": 0.0,
-          "pnl": -4271.54
+          "pnl": -2389.76,
+          "profit_factor": 0.0,
+          "filter_vetoes": 111
         },
         "GOLD": {
-          "trades": 90,
-          "win_rate": 23.3,
-          "pnl": -1122.34
+          "trades": 37,
+          "win_rate": 29.7,
+          "pnl": -390.84,
+          "profit_factor": 0.35,
+          "filter_vetoes": 122
         },
         "NVDA": {
-          "trades": 51,
-          "win_rate": 27.5,
-          "pnl": -554.72
+          "trades": 31,
+          "win_rate": 25.8,
+          "pnl": -456.13,
+          "profit_factor": 0.26,
+          "filter_vetoes": 41
         },
         "TSLA": {
-          "trades": 55,
-          "win_rate": 36.4,
-          "pnl": -428.3
+          "trades": 35,
+          "win_rate": 37.1,
+          "pnl": -241.01,
+          "profit_factor": 0.56,
+          "filter_vetoes": 42
         },
         "US100": {
-          "trades": 89,
-          "win_rate": 28.1,
-          "pnl": -928.99
+          "trades": 43,
+          "win_rate": 20.9,
+          "pnl": -491.75,
+          "profit_factor": 0.2,
+          "filter_vetoes": 93
         },
         "US500": {
-          "trades": 81,
-          "win_rate": 16.0,
-          "pnl": -1609.81
+          "trades": 37,
+          "win_rate": 10.8,
+          "pnl": -893.96,
+          "profit_factor": 0.05,
+          "filter_vetoes": 100
         }
       }
     },
     "5m": {
+      "trades": 181,
+      "win_rate": 7.7,
+      "pnl": -6697.26,
+      "profit_factor": 0.03,
       "constituents": [
         "ema921_adx_dmi_m5",
         "ema78_crossover_m5"
@@ -3490,44 +4059,56 @@
         "US100",
         "US500"
       ],
-      "total_trades": 601,
-      "win_rate": 3.5,
-      "total_pnl": -17406.5,
+      "filter_vetoes": 1056,
       "per_symbol": {
         "BTCUSD": {
-          "trades": 97,
-          "win_rate": 4.1,
-          "pnl": -1678.88
+          "trades": 27,
+          "win_rate": 7.4,
+          "pnl": -572.06,
+          "profit_factor": 0.02,
+          "filter_vetoes": 194
         },
         "EURUSD": {
-          "trades": 83,
+          "trades": 20,
           "win_rate": 0.0,
-          "pnl": -5502.34
+          "pnl": -2286.32,
+          "profit_factor": 0.0,
+          "filter_vetoes": 145
         },
         "GOLD": {
-          "trades": 106,
-          "win_rate": 1.9,
-          "pnl": -2257.81
+          "trades": 23,
+          "win_rate": 8.7,
+          "pnl": -646.14,
+          "profit_factor": 0.02,
+          "filter_vetoes": 206
         },
         "NVDA": {
-          "trades": 65,
-          "win_rate": 10.8,
-          "pnl": -1013.6
+          "trades": 35,
+          "win_rate": 11.4,
+          "pnl": -578.6,
+          "profit_factor": 0.13,
+          "filter_vetoes": 67
         },
         "TSLA": {
-          "trades": 58,
-          "win_rate": 8.6,
-          "pnl": -1330.9
+          "trades": 23,
+          "win_rate": 17.4,
+          "pnl": -554.68,
+          "profit_factor": 0.13,
+          "filter_vetoes": 88
         },
         "US100": {
-          "trades": 97,
-          "win_rate": 3.1,
-          "pnl": -2242.25
+          "trades": 25,
+          "win_rate": 8.0,
+          "pnl": -707.62,
+          "profit_factor": 0.03,
+          "filter_vetoes": 183
         },
         "US500": {
-          "trades": 95,
+          "trades": 28,
           "win_rate": 0.0,
-          "pnl": -3380.72
+          "pnl": -1351.84,
+          "profit_factor": 0.0,
+          "filter_vetoes": 173
         }
       }
     }
