@@ -21,6 +21,11 @@ NEW_STRATEGIES = [
     "bb_macd_sma_app", "cci200_ema_pivot_app", "bb_rsi_m30", "multi_bb_app",
     "parsar_cci_ema_m1", "parsar_cci_ema_m5", "ao_macd_app",
     "follow_the_trend_h4", "follow_the_trend_d1", "goldmine_xauusd",
+    "speculative_zigzag_rsi", "bb_rsi_cutting",
+    # Final app-spec batch (25 Jul).
+    "parsar_awesome", "cci_ema_psar", "ema_adx_macd_contrarian", "momentum_forex",
+    "psar_ao_ac", "cci_ema_fixed", "ema100_dual_tf", "ichimoku_awesome",
+    "scalp_macd_stoch_10pt", "ema200_awesome", "bb_williams_rsi_ranging", "triple_sma",
 ]
 
 
@@ -76,9 +81,13 @@ def test_report_matrix_picks_up_a_new_strategys_trades_and_consensus():
         _trade("goldmine_xauusd", "GOLD", 12.5),
         _trade("follow_the_trend_h4", "EURUSD", -4.0),
         _trade("consensus", "US100", 30.0),
+        _trade("triple_sma", "EURUSD", 8.0),
+        _trade("ema100_dual_tf", "GBPUSD", -2.5),
     ]
     m = _matrix(trades)
     assert "goldmine_xauusd" in m["strategies"]
     assert "follow_the_trend_h4" in m["strategies"]
     assert "consensus" in m["strategies"]
+    assert "triple_sma" in m["strategies"]
+    assert "ema100_dual_tf" in m["strategies"]
     assert "GOLD" in m["instruments"]
