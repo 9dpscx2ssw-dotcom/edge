@@ -13,7 +13,7 @@ from pathlib import Path
 
 from gungnir.config import Config
 from gungnir.core import filters
-from gungnir.core.agent import _breakeven_stop, _trailing_stop
+from gungnir.core.agent import _breakeven_stop, _ema_trailing_stop, _trailing_stop
 from gungnir.core.filters import FilterConfig
 from gungnir.data.models import Side, Signal
 from gungnir.features.feature_store import KrakenFeatureSet
@@ -88,6 +88,28 @@ def test_trailing_guards_degenerate_inputs():
     assert _trailing_stop(Side.BUY, 110.0, None, 2.0, 1.5) is None   # no stop
     assert _trailing_stop(Side.BUY, 110.0, 100.0, 0.0, 1.5) is None  # no ATR
     assert _trailing_stop(Side.BUY, 110.0, 100.0, 2.0, 0.0) is None  # mult off
+
+
+# ── EMA-line trailing stop (parsar_cci_ema: "SL at the EMA level") ────────────
+
+def test_ema_trail_long_follows_ema_up():
+    # long, stop 98, EMA now at 99 (above old stop) → ratchets up to 99.
+    assert _ema_trailing_stop(Side.BUY, ema_value=99.0, cur_stop=98.0) == 99.0
+
+
+def test_ema_trail_short_follows_ema_down():
+    assert _ema_trailing_stop(Side.SELL, ema_value=101.0, cur_stop=102.0) == 101.0
+
+
+def test_ema_trail_is_one_way_never_widens():
+    # EMA below the current (already tighter) stop must not loosen it.
+    assert _ema_trailing_stop(Side.BUY, ema_value=97.0, cur_stop=98.0) is None
+    assert _ema_trailing_stop(Side.SELL, ema_value=103.0, cur_stop=102.0) is None
+
+
+def test_ema_trail_guards_degenerate_inputs():
+    assert _ema_trailing_stop(Side.BUY, ema_value=99.0, cur_stop=None) is None
+    assert _ema_trailing_stop(Side.BUY, ema_value=0.0, cur_stop=98.0) is None
 
 
 # ── Phase 1: shipped regime_rules ─────────────────────────────────────────────

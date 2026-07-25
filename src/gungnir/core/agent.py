@@ -113,6 +113,25 @@ def _trailing_stop(
     return t if t < cur_stop else None
 
 
+def _ema_trailing_stop(
+    side: Side,
+    ema_value: float,
+    cur_stop: float | None,
+) -> float | None:
+    """New stop when a position's stop should ride a moving-average line.
+
+    Used by strategies (``Strategy.trail_ema_period``) whose source design
+    places the stop at the EMA level rather than a fixed ATR distance. One-way
+    only: returns the new stop if it tightens risk (up for longs, down for
+    shorts), else ``None``. Never widens, and never fires on a stale/zero EMA.
+    """
+    if cur_stop is None or ema_value <= 0:
+        return None
+    if side == Side.BUY:
+        return ema_value if ema_value > cur_stop else None
+    return ema_value if ema_value < cur_stop else None
+
+
 class Agent:
     def __init__(
         self,
@@ -891,6 +910,24 @@ class Agent:
                             pos.context["stop"] = stop = new_stop
                             log.debug("Trail %s/%s: stop -> %.5f (peak=%.5f atr=%.5f)",
                                       symbol, pos.strategy, new_stop, peak, atr)
+                # Strategy-specific EMA-line trailing stop (e.g. parsar_cci_ema:
+                # "Stop Loss level should be placed at the EMA level"). Opt-in
+                # per strategy via `trail_ema_period`; reads the same per-(symbol,
+                # timeframe) feature cache the signal loop populates, so no
+                # extra fetch. One-way ratchet, same convention as breakeven/ATR
+                # trailing above — never widens the stop.
+                strat_obj = self.strategies.get(pos.strategy)
+                ema_period = int(getattr(strat_obj, "trail_ema_period", 0) or 0)
+                if (strat_obj is not None and ema_period and stop is not None
+                        and strat_obj.p("ema_trail_enabled") > 0):
+                    strat_tf = getattr(strat_obj, "timeframe", self.tf)
+                    cached = self._feat_cache.get((symbol, strat_tf))
+                    ema_val = getattr(cached[1], f"ema{ema_period}", 0.0) if cached else 0.0
+                    new_stop = _ema_trailing_stop(pos.side, ema_val, stop)
+                    if new_stop is not None:
+                        pos.context["stop"] = stop = new_stop
+                        log.debug("EMA-trail %s/%s: stop -> %.5f (ema%d=%.5f)",
+                                  symbol, pos.strategy, new_stop, ema_period, ema_val)
                 if pos.side == Side.BUY:
                     hit = (stop and price <= stop) or (tp and price >= tp)
                 else:
@@ -1609,6 +1646,11 @@ class Agent:
         for strat in active_strats:
             tf = getattr(strat, "timeframe", self.tf)
             timeframes.add(tf)
+            # Higher-timeframe confluence (e.g. parsar_cci_ema's M5/EMA21
+            # filter): fetch that timeframe too so it's available below.
+            confirm_tf = getattr(strat, "confirm_timeframe", "")
+            if confirm_tf and strat.p("mtf_confirm_enabled") > 0:
+                timeframes.add(confirm_tf)
 
         # Fetch candles for every timeframe concurrently (was sequential — the
         # main reason a multi-symbol fast loop couldn't finish in its interval).
@@ -1846,6 +1888,12 @@ class Agent:
             if tf in bar_ts_by_tf and tf not in fresh_tfs:
                 continue    # this bar was already decided; nothing new to say
             features = features_by_tf.get(tf, primary_features)
+
+            # Attach this cycle's higher-timeframe confluence features (if the
+            # strategy opted in via `confirm_timeframe`); None otherwise.
+            confirm_tf = getattr(strat, "confirm_timeframe", "")
+            strat._confirm_features = (
+                features_by_tf.get(confirm_tf) if confirm_tf else None)
 
             # Edge-triggered emission: the strategies are level-based (they
             # emit while a condition holds). Act only on the bar where a side

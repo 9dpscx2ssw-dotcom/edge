@@ -146,11 +146,28 @@ class CCIMACDStrategy(Strategy):
 
 
 class ParSARCCIStrategy(Strategy):
-    """S2: Parabolic SAR + CCI(45) + EMA(50) — M1."""
+    """S2: Parabolic SAR + CCI(45) + EMA(50) — M1, source-strategy-accurate.
+
+    Entry compares the SAR *value* to the EMA line (the app spec's "SAR point
+    above/below the EMA's line"), not price to EMA — those aren't the same
+    test. Optionally confirmed against an EMA(21) on a higher timeframe
+    (``confirm_timeframe``, M5 by default), mirroring the source app's
+    dual-timeframe filter (EMA50/M1 + EMA21/M5); toggle off via the
+    ``mtf_confirm_enabled`` param. Exit trailing (stop follows the EMA line,
+    per the app's "Stop Loss level should be placed at the EMA level") is
+    opt-in via ``ema_trail_enabled`` — see Agent._manage_exits.
+    """
 
     name = "parsar_cci_ema"
     family = "trend"
-    DEFAULTS = {"cci_threshold": 100.0, "conviction_base": 0.5}
+    confirm_timeframe = "5m"
+    trail_ema_period = 50
+    DEFAULTS = {
+        "cci_threshold": 100.0,
+        "conviction_base": 0.5,
+        "mtf_confirm_enabled": 1.0,   # 0 disables the M5/EMA21 confluence check
+        "ema_trail_enabled": 1.0,     # 0 disables the EMA-line trailing stop
+    }
     BOUNDS = {"cci_threshold": (50.0, 200.0), "conviction_base": (0.3, 0.8)}
 
     def generate(self, features: KrakenFeatureSet) -> list[Signal]:
@@ -161,9 +178,20 @@ class ParSARCCIStrategy(Strategy):
         cci = features.cci45
         price = features.last_price
         conviction = base + 0.3 * min(max(abs(cci) - thr, 0.0) / max(thr, 1e-9), 1.0)
-        if features.sar_trend > 0 and price > features.ema50 and cci > thr:
+
+        # Higher-timeframe confluence: only take the M1 signal if price sits on
+        # the right side of the M5 EMA21 trend filter. `_confirm_features` is
+        # attached by the agent each cycle from `confirm_timeframe`'s feature
+        # set; absent (thin data / toggled off) ⇒ the check is skipped.
+        confirm = getattr(self, "_confirm_features", None)
+        mtf_ok_buy = mtf_ok_sell = True
+        if confirm is not None and self.p("mtf_confirm_enabled") > 0:
+            mtf_ok_buy = price > confirm.ema21
+            mtf_ok_sell = price < confirm.ema21
+
+        if features.sar > features.ema50 and cci > thr and mtf_ok_buy:
             return _sig(self, features, Side.BUY, conviction)
-        elif features.sar_trend < 0 and price < features.ema50 and cci < -thr:
+        elif features.sar < features.ema50 and cci < -thr and mtf_ok_sell:
             return _sig(self, features, Side.SELL, conviction)
         return []
 

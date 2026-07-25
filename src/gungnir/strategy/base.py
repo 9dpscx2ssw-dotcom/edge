@@ -36,6 +36,20 @@ class Strategy(ABC):
     DEFAULTS: dict[str, float] = {}
     BOUNDS: dict[str, tuple[float, float]] = {}
 
+    # Optional higher-timeframe confluence: a strategy that sets this to a
+    # timeframe string (e.g. "5m") gets that timeframe's FeatureSet fetched
+    # alongside its own and attached to `_confirm_features` before each
+    # `generate()` call (Agent._decide_symbol). Empty ⇒ no extra fetch, no
+    # side channel — inert for every strategy that doesn't opt in.
+    confirm_timeframe: str = ""
+
+    # Optional strategy-specific trailing exit: a strategy that sets this to a
+    # nonzero EMA period (e.g. 50) has its stop ratcheted to that EMA's current
+    # value each cycle (never widened) once the position is open — see
+    # Agent._manage_exits. 0 ⇒ the generic ATR/breakeven trailing rules apply
+    # instead.
+    trail_ema_period: int = 0
+
     def __init__(
         self,
         params: dict | None = None,
@@ -51,6 +65,9 @@ class Strategy(ABC):
         self.excluded_symbols = excluded_symbols or []
         self.mode = mode if mode in self.MODES else "shadow"
         self.timeframe = timeframe
+        # Populated each cycle by the agent when `confirm_timeframe` is set;
+        # `None` for every strategy that hasn't opted in (see class docstring).
+        self._confirm_features = None
 
     @property
     def enabled(self) -> bool:
