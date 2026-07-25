@@ -16,6 +16,7 @@ gate.
 from __future__ import annotations
 
 from ..data.models import Signal, Side
+from ..execution.fx import point_size as _fx_point_size
 from ..features.feature_store import KrakenFeatureSet
 from .base import Strategy
 
@@ -37,21 +38,6 @@ def _crossed_down(prev_fast: float, prev_slow: float, fast: float, slow: float) 
 def _has_directional_momentum(momentum_zero: float, direction: int) -> bool:
     """Require strict, zero-line momentum confirmation for the proposed side."""
     return momentum_zero > 0 if direction > 0 else momentum_zero < 0
-
-
-def _fx_point_size(symbol: str) -> float | None:
-    """Standard FX pip size: 0.01 for JPY-quoted pairs, 0.0001 otherwise.
-
-    None for anything that isn't a genuine 6-letter ISO currency pair
-    (indices, commodities, crypto like BTCUSD) — "points" in the
-    app-strategy sense isn't a meaningful unit there, so callers should fall
-    back to the generic ATR-based stop instead of guessing a tick size.
-    """
-    from ..execution.fx import _CCY
-    s = symbol.upper()
-    if len(s) == 6 and s[:3] in _CCY and s[3:] in _CCY:
-        return 0.01 if s.endswith("JPY") else 0.0001
-    return None
 
 
 def _daily_pivot(candles: list) -> tuple[float, float, float] | None:
@@ -973,12 +959,45 @@ class MACDStochStrategy(Strategy):
 
 
 class AlligatorStrategy(Strategy):
-    """S14: Williams Alligator(13/8/5) + SMA(144) — M15."""
+    """S14: Williams Alligator(13/8/5) + SMA(144) — H1 (app recommends M15,
+    "longer periods are admissible too" — H1 is within spec, not a
+    cost-floor conflict like the M1/M5 cases elsewhere).
+
+    Overwritten in place to match the source app spec ("Alligator") — never
+    faithful to begin with (generic ATR bracket instead of the app's
+    SMA144-tracking stop and lips/teeth reversal close), so there's no prior
+    empirical rationale to protect by keeping a separate variant. This
+    strategy is `mode: off` and has never traded.
+
+    Entry: SMA144 trend filter + full lips>teeth>jaw alignment (unchanged —
+    already faithful; edge-triggered by the agent's generic emission, a
+    reasonable proxy for the app's "lips crossed both other lines, teeth
+    crossed jaw, both from below" even though it isn't bar-for-bar the same
+    two-event test).
+
+    Exit:
+      SL tracks SMA144 continuously, 1 point beyond it ("all the time" — not
+      set once at entry), via the generic `trail_field`/`trail_buffer_points`
+      hook (see Agent._manage_exits).
+      Closes outright when the lips cross back through the teeth against the
+      position (`alligator_cross_exit`), per "closed once the green line has
+      crossed the red line" — not a fixed price target.
+    """
 
     name = "alligator"
     family = "trend"
-    DEFAULTS = {"conviction_base": 0.5}
+    trail_field = "sma144"
+    DEFAULTS = {
+        "conviction_base": 0.5,
+        "trail_field_enabled": 1.0,
+        "trail_buffer_points": 1.0,   # app: 1 point beyond SMA144
+        "alligator_cross_exit_enabled": 1.0,
+    }
     BOUNDS = {"conviction_base": (0.3, 0.8)}
+
+    @property
+    def alligator_cross_exit(self) -> bool:
+        return self.p("alligator_cross_exit_enabled") > 0
 
     def generate(self, features: KrakenFeatureSet) -> list[Signal]:
         if not isinstance(features, KrakenFeatureSet):

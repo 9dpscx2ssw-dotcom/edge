@@ -19,6 +19,7 @@ from pathlib import Path
 from ..config import Config
 from ..data.feeds import MacroFeed, MarketFeed, NewsFeed
 from ..data.models import NewsItem, Side, Signal
+from ..execution import fx
 from ..execution.broker import Broker, PaperBroker
 from ..execution.netting import NET_TAG, NettingBroker
 from ..features import feature_store
@@ -928,6 +929,29 @@ class Agent:
                         pos.context["stop"] = stop = new_stop
                         log.debug("EMA-trail %s/%s: stop -> %.5f (ema%d=%.5f)",
                                   symbol, pos.strategy, new_stop, ema_period, ema_val)
+                # Strategy-specific arbitrary-field trailing stop (e.g.
+                # alligator: "Stop Loss is to be placed 1 point lower [higher]
+                # than SMA144 (all the time)" — a continuously-tracking stop,
+                # not one set once at entry). Opt-in via `trail_field` (any
+                # FeatureSet attribute name, e.g. "sma144"); distinct from
+                # `trail_ema_period` above, which looks up `ema{N}` by period
+                # rather than an arbitrary named field. `trail_buffer_points`
+                # offsets it by FX points beyond the field value.
+                trail_field = getattr(strat_obj, "trail_field", "") if strat_obj else ""
+                if (strat_obj is not None and trail_field and stop is not None
+                        and strat_obj.p("trail_field_enabled") > 0):
+                    strat_tf = getattr(strat_obj, "timeframe", self.tf)
+                    cached = self._feat_cache.get((symbol, strat_tf))
+                    field_val = getattr(cached[1], trail_field, 0.0) if cached else 0.0
+                    point = fx.point_size(symbol) or 0.0
+                    buffer_dist = strat_obj.p("trail_buffer_points") * point
+                    ref = (field_val - buffer_dist if pos.side == Side.BUY
+                           else field_val + buffer_dist)
+                    new_stop = _ema_trailing_stop(pos.side, ref, stop)
+                    if new_stop is not None:
+                        pos.context["stop"] = stop = new_stop
+                        log.debug("Field-trail %s/%s: stop -> %.5f (%s=%.5f)",
+                                  symbol, pos.strategy, new_stop, trail_field, field_val)
                 # Strategy-specific EMA-cross exit (e.g. cci200_ema_pivot_app:
                 # "Take Profit ... after the 10 EMA and 21 EMA cross each other
                 # in the opposite direction"). Opt-in via `ema_cross_exit`;
@@ -945,6 +969,24 @@ class Agent:
                                   symbol, pos.strategy, pos.side.value)
                         await self._close(broker, symbol, self._last_view.get(symbol, {}),
                                           pos.strategy, reason="ema-cross-exit")
+                        continue
+                # Strategy-specific Alligator-cross exit (e.g. alligator:
+                # "Long positions are to be closed once the green line
+                # [lips] of the Alligator indicator has crossed the red
+                # line [teeth] from above" — mirror for shorts). Opt-in via
+                # `alligator_cross_exit`.
+                if strat_obj is not None and getattr(strat_obj, "alligator_cross_exit", False):
+                    strat_tf = getattr(strat_obj, "timeframe", self.tf)
+                    cached = self._feat_cache.get((symbol, strat_tf))
+                    feats = cached[1] if cached else None
+                    flipped = feats is not None and (
+                        (pos.side == Side.BUY and feats.alligator_lips < feats.alligator_teeth) or
+                        (pos.side == Side.SELL and feats.alligator_lips > feats.alligator_teeth))
+                    if flipped:
+                        log.debug("Alligator-cross exit for %s/%s: lips/teeth flipped against %s",
+                                  symbol, pos.strategy, pos.side.value)
+                        await self._close(broker, symbol, self._last_view.get(symbol, {}),
+                                          pos.strategy, reason="alligator-cross-exit")
                         continue
                 # Strategy-specific stochastic-exhaustion exit (e.g.
                 # ema_stoch_rsi: "Close long positions when Stochastic rises

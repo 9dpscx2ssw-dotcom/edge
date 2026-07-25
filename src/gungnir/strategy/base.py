@@ -62,6 +62,20 @@ class Strategy(ABC):
     # Agent._manage_exits). False ⇒ no effect.
     stoch_exhaustion_exit: bool = False
 
+    # Optional strategy-specific trailing exit: a strategy that sets this to
+    # a FeatureSet attribute name (e.g. "sma144") has its stop ratcheted to
+    # that field's current value each cycle (offset by `trail_buffer_points`
+    # FX points, never widened) — see Agent._manage_exits. Distinct from
+    # `trail_ema_period` above, which looks up `ema{N}` by period rather than
+    # an arbitrary named field. "" ⇒ inert.
+    trail_field: str = ""
+
+    # Optional strategy-specific exit signal: a strategy that sets this True
+    # has its position closed outright the moment the Alligator lips cross
+    # back through the teeth against the position's side (see
+    # Agent._manage_exits). False ⇒ no effect.
+    alligator_cross_exit: bool = False
+
     def __init__(
         self,
         params: dict | None = None,
