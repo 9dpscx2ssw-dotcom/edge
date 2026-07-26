@@ -79,3 +79,26 @@ def test_backtest_run_endpoint_reports_cached_db_source(tmp_path, monkeypatch):
     }, headers={"X-Dashboard-Token": "test-dashboard-token"})
     assert resp.status_code == 200
     assert resp.json()["data_source"] == "cached_db"
+
+
+def test_get_backtest_serves_cached_all_strategies_run(tmp_path, monkeypatch):
+    """GET /api/backtest powers the Strategies-tab PF heatmap from the last
+    `scripts/backtest_all_strategies.py` run — read-only, empty when absent."""
+    from fastapi.testclient import TestClient
+    from gungnir.dashboard.server import create_app
+
+    monkeypatch.setenv("GUNGNIR_BACKTEST_ALL_PATH", str(tmp_path / "missing.json"))
+    c = TestClient(create_app())
+    resp = c.get("/api/backtest")
+    assert resp.status_code == 200
+    assert resp.json() == {}
+
+    payload = {"strategies": {"trend_following": {"trades": 10, "profit_factor": 0.9}}}
+    all_path = tmp_path / "backtest_all_strategies.json"
+    all_path.write_text(json.dumps(payload))
+    monkeypatch.setenv("GUNGNIR_BACKTEST_ALL_PATH", str(all_path))
+
+    c = TestClient(create_app())
+    resp = c.get("/api/backtest")
+    assert resp.status_code == 200
+    assert resp.json() == payload

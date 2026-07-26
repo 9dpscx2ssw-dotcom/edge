@@ -1183,7 +1183,16 @@ def create_app() -> FastAPI:
 
     @app.get("/api/backtest")
     def get_backtest_cached() -> JSONResponse:
-        return JSONResponse({})
+        """Last `scripts/backtest_all_strategies.py` run, if one has been written
+        to disk — powers the Strategies/Overview backtest-PF heatmap. Read-only;
+        the file is produced offline, never by a request to this server."""
+        path = Path(os.getenv("GUNGNIR_BACKTEST_ALL_PATH", "data/backtest_all_strategies.json"))
+        if not path.exists():
+            return JSONResponse({})
+        try:
+            return JSONResponse(json.loads(path.read_text()))
+        except (OSError, json.JSONDecodeError):
+            return JSONResponse({})
 
     @app.post("/api/backtest/run")
     def run_backtest(body: dict = Body(...)) -> JSONResponse:
