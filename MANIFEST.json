@@ -1,0 +1,72 @@
+{
+  "capture_utc": "20260726T091320Z",
+  "source": "oracle container /app/data; named volume oracle_oracle-data; compose project oracle",
+  "file_count": 28,
+  "db": {
+    "present": true,
+    "integrity": "ok",
+    "counts": {
+      "candles": 89655,
+      "consensus_decisions": 14750,
+      "consensus_lifecycle": 14750,
+      "execution_events": 1054,
+      "learning_events": 6,
+      "order_intents": 1096,
+      "reconciliation_events": 1054,
+      "signals": 977,
+      "sqlite_sequence": 5,
+      "trades": 139
+    }
+  },
+  "secret_like_scan": {
+    "hits": [],
+    "scope": "limited: text content plus binary string patterns; does not certify SQLite/NPZ/opaque logs non-sensitive"
+  },
+  "publication_note": "Captured directly from running oracle:/app/data at capture_utc. The Oracle container and named volume were no longer present during publication verification; data/gungnir.db-shm is omitted because this volatile SQLite shared-memory file changed during local read-only validation. data/gungnir.db and data/gungnir.db-wal remained checksum-matched to the original capture.",
+  "published_file_count": 34,
+  "omitted_from_publication": [
+    "data/gungnir.db-shm"
+  ],
+  "sqlite_gzip_publication": [
+    {
+      "original_path": "data/backups/2026-07-23/gungnir.db",
+      "published_path": "data/backups/2026-07-23/gungnir.db.gz",
+      "original_bytes": 1732608,
+      "published_bytes": 376271,
+      "original_sha256": "1cbf7cdc0d71decfcba896945a87fc6739e534b0f28b8c504fe7d05cf3dad2cd",
+      "gzip_sha256": "2fe7481a7713dc1187f957861e9375771707d688f147ab1e754734eb503072f2"
+    },
+    {
+      "original_path": "data/backups/2026-07-24/gungnir.db",
+      "published_path": "data/backups/2026-07-24/gungnir.db.gz",
+      "original_bytes": 97173504,
+      "published_bytes": 6695008,
+      "original_sha256": "957cfbe75748e96a5c47f50a3f012c289f0a2e8f39de106ff2c7cb70f6765173",
+      "gzip_sha256": "d656db130c948c8bf75b36144c05ca6e93f4797212588b841cc8ffc11d0c5451"
+    },
+    {
+      "original_path": "data/backups/2026-07-25/gungnir.db",
+      "published_path": "data/backups/2026-07-25/gungnir.db.gz",
+      "original_bytes": 112017408,
+      "published_bytes": 8049237,
+      "original_sha256": "027111bacc846dcfff88e5bb85cc7e751ba807bf938393ac8145fb213c29f52f",
+      "gzip_sha256": "dff2cdd0f2ddd47e695ab1d82fff89e7783502d816efc5318b1e56f10700a1ee"
+    },
+    {
+      "original_path": "data/backups/2026-07-26/gungnir.db",
+      "published_path": "data/backups/2026-07-26/gungnir.db.gz",
+      "original_bytes": 139657216,
+      "published_bytes": 10005625,
+      "original_sha256": "b286918211bfb6fa77dec64e8e0458a7091fad232c9d5839b02840aaf5d433bb",
+      "gzip_sha256": "9bde7506e608cf8e6b74486d9094a400a8ad64546465a9e7f680fed91fe86895"
+    },
+    {
+      "original_path": "data/gungnir.db",
+      "published_path": "data/gungnir.db.gz",
+      "original_bytes": 140754944,
+      "published_bytes": 10073183,
+      "original_sha256": "3ec3505e97f5daf6b7caaec00663938e9936e25fbfa7fb8c7f81b07ef1e2a9d2",
+      "gzip_sha256": "30652f10c8b7d85585b705f00a11fb759f1708d5d6b0c8c729017aaeb6595f62"
+    }
+  ]
+}

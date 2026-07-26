@@ -30,6 +30,14 @@ strategies:
   timeframe: 15m
   params:
     period_bb: 20
+- name: multi_bb_app
+  mode: shadow
+  enabled: true
+  symbols:
+  - GBPJPY
+  excluded_symbols: []
+  timeframe: 15m
+  params: {}
 - name: fvg_m30
   mode: shadow
   enabled: true
@@ -45,9 +53,14 @@ strategies:
   symbols: []
   excluded_symbols: []
   timeframe: 15m
-  params:
-    period_bb: 20
-    period_rsi: 11
+  params: {}
+- name: bb_rsi_m30
+  mode: shadow
+  enabled: true
+  symbols: []
+  excluded_symbols: []
+  timeframe: 30m
+  params: {}
 - name: macd_stoch
   mode: shadow
   enabled: true
@@ -74,7 +87,7 @@ strategies:
   timeframe: 1h
   params:
     period_cci: 14
-    threshold: 100
+    cci_threshold: 150
 - name: ema921_adx_dmi_m5
   mode: shadow
   enabled: true
@@ -102,8 +115,8 @@ strategies:
   params:
     conviction_base: 0.55
 - name: ema78_crossover_m15
-  mode: 'off'
-  enabled: false
+  mode: shadow
+  enabled: true
   symbols: []
   excluded_symbols: []
   timeframe: 15m
@@ -117,15 +130,22 @@ strategies:
   timeframe: 15m
   params:
     period_cci: 14
-- name: parsar_cci_ema
+- name: parsar_cci_ema_m1
   mode: shadow
   enabled: true
   symbols: []
   excluded_symbols: []
-  timeframe: 15m
+  timeframe: 1m
   params:
     period_cci: 45
-    period_ema: 50
+- name: parsar_cci_ema_m5
+  mode: shadow
+  enabled: true
+  symbols: []
+  excluded_symbols: []
+  timeframe: 5m
+  params:
+    period_cci: 45
 - name: bb_macd_sma
   mode: shadow
   enabled: true
@@ -135,7 +155,24 @@ strategies:
   params:
     period_bb: 20
     std_dev: 2.0
+- name: bb_macd_sma_app
+  mode: shadow
+  enabled: true
+  symbols: []
+  excluded_symbols: []
+  timeframe: 15m
+  params:
+    period_bb: 20
+    std_dev: 2.0
 - name: cci200_ema_pivot
+  mode: shadow
+  enabled: true
+  symbols: []
+  excluded_symbols: []
+  timeframe: 15m
+  params:
+    period_cci: 200
+- name: cci200_ema_pivot_app
   mode: shadow
   enabled: true
   symbols: []
@@ -177,6 +214,27 @@ strategies:
   symbols: []
   excluded_symbols: []
   timeframe: 4h
+  params: {}
+- name: ao_macd_app
+  mode: shadow
+  enabled: true
+  symbols: []
+  excluded_symbols: []
+  timeframe: 4h
+  params: {}
+- name: follow_the_trend_h4
+  mode: shadow
+  enabled: true
+  symbols: []
+  excluded_symbols: []
+  timeframe: 4h
+  params: {}
+- name: follow_the_trend_d1
+  mode: shadow
+  enabled: true
+  symbols: []
+  excluded_symbols: []
+  timeframe: 1d
   params: {}
 - name: intelligent_trading
   mode: shadow
@@ -252,8 +310,8 @@ strategies:
     lookback: 50
     min_body_ratio: 0.5
 - name: fvg_m5
-  mode: 'off'
-  enabled: false
+  mode: shadow
+  enabled: true
   symbols: []
   excluded_symbols: []
   timeframe: 5m
@@ -270,18 +328,121 @@ strategies:
     lookback: 50
     min_body_ratio: 0.5
 - name: scalp_ema_vwap_m1
-  mode: 'off'
-  enabled: false
+  mode: shadow
+  enabled: true
   symbols: []
   excluded_symbols: []
   timeframe: 1m
   params:
     period_ema: 9
 - name: scalp_ema_vwap_m5
-  mode: 'off'
-  enabled: false
+  mode: shadow
+  enabled: true
   symbols: []
   excluded_symbols: []
   timeframe: 5m
   params:
     period_ema: 9
+- name: goldmine_xauusd
+  mode: shadow
+  enabled: true
+  symbols:
+  - GOLD
+  excluded_symbols: []
+  timeframe: 1d
+  params: {}
+- name: speculative_zigzag_rsi
+  mode: shadow
+  enabled: true
+  symbols:
+  - EURUSD
+  - GBPUSD
+  excluded_symbols: []
+  timeframe: 15m
+  params: {}
+- name: parsar_awesome
+  mode: shadow
+  enabled: true
+  symbols:
+  - USDCHF
+  - EURUSD
+  excluded_symbols: []
+  timeframe: 30m
+  params: {}
+- name: cci_ema_psar
+  mode: shadow
+  enabled: true
+  symbols: []
+  excluded_symbols: []
+  timeframe: 1h
+  params: {}
+- name: ema_adx_macd_contrarian
+  mode: shadow
+  enabled: true
+  symbols: []
+  excluded_symbols: []
+  timeframe: 4h
+  params: {}
+- name: momentum_forex
+  mode: shadow
+  enabled: true
+  symbols: []
+  excluded_symbols: []
+  timeframe: 15m
+  params: {}
+- name: psar_ao_ac
+  mode: shadow
+  enabled: true
+  symbols: []
+  excluded_symbols: []
+  timeframe: 1h
+  params: {}
+- name: cci_ema_fixed
+  mode: shadow
+  enabled: true
+  symbols: []
+  excluded_symbols: []
+  timeframe: 30m
+  params: {}
+- name: ema100_dual_tf
+  mode: shadow
+  enabled: true
+  symbols: []
+  excluded_symbols: []
+  timeframe: 15m
+  params: {}
+- name: ichimoku_awesome
+  mode: shadow
+  enabled: true
+  symbols: []
+  excluded_symbols: []
+  timeframe: 1h
+  params: {}
+- name: scalp_macd_stoch_10pt
+  mode: shadow
+  enabled: true
+  symbols: []
+  excluded_symbols: []
+  timeframe: 1m
+  params: {}
+- name: ema200_awesome
+  mode: shadow
+  enabled: true
+  symbols: []
+  excluded_symbols: []
+  timeframe: 1h
+  params: {}
+- name: bb_williams_rsi_ranging
+  mode: shadow
+  enabled: true
+  symbols: []
+  excluded_symbols: []
+  timeframe: 15m
+  params: {}
+- name: triple_sma
+  mode: shadow
+  enabled: true
+  symbols: []
+  excluded_symbols: []
+  timeframe: 4h
+  params: {}

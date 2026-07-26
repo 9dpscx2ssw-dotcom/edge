@@ -1,25 +1,27 @@
-0  ./FILE_SIZES.txt
-0  ./data/backups/2026-07-23/gungnir.db-wal
-10  ./data/last_daily_report
-123377  ./data/status.json
-124250  ./data/backups/2026-07-24/rl_policy.state.npz
-148378  ./data/rl_policy.state.npz
-1732608  ./data/backups/2026-07-23/gungnir.db
-17818  ./data/audit.jsonl
-2  ./data/heartbeat
-21862400  ./audit_archive/oracle_32_strategy_deep_audit_20260724.tar
-23311  ./data/rl_convergence.jsonl
-30908  ./data/shadow_virtual_books.json
-32  ./data/last_weekly_report
-326  ./ORACLE_RUNTIME_SOURCE.txt
-32768  ./data/backups/2026-07-23/gungnir.db-shm
-32768  ./data/gungnir.db-shm
-353  ./data/risk_state.json
-4157112  ./data/gungnir.db-wal
-465  ./data/control.json
-4987  ./data/strategies.yaml
-79294464  ./data/backups/2026-07-24/gungnir.db
-82681856  ./data/gungnir.db
-9140  ./data/backups/2026-07-24/rl_policy.npz
-9140  ./data/rl_policy.npz
-9140  ./data/rl_policy.npz.bak
+       44785  data/audit.jsonl
+       32768  data/backups/2026-07-23/gungnir.db-shm
+           0  data/backups/2026-07-23/gungnir.db-wal
+      376271  data/backups/2026-07-23/gungnir.db.gz
+     6695008  data/backups/2026-07-24/gungnir.db.gz
+        9140  data/backups/2026-07-24/rl_policy.npz
+      183946  data/backups/2026-07-24/rl_policy.state.npz
+     8049237  data/backups/2026-07-25/gungnir.db.gz
+        9140  data/backups/2026-07-25/rl_policy.npz
+        3490  data/backups/2026-07-25/rl_policy.state.npz
+    10005625  data/backups/2026-07-26/gungnir.db.gz
+        9140  data/backups/2026-07-26/rl_policy.npz
+       43666  data/backups/2026-07-26/rl_policy.state.npz
+        1970  data/control.json
+     4152992  data/gungnir.db-wal
+    10073183  data/gungnir.db.gz
+           2  data/heartbeat
+          10  data/last_daily_report
+          32  data/last_weekly_report
+         373  data/risk_state.json
+       61652  data/rl_convergence.jsonl
+        9140  data/rl_policy.npz
+        9140  data/rl_policy.npz.bak
+       43882  data/rl_policy.state.npz
+       26440  data/shadow_virtual_books.json
+       58538  data/status.json
+        7743  data/strategies.yaml

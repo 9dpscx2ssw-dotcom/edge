@@ -1,8 +1,1 @@
-container=oracle
-compose_project=oracle\ncompose_workdir=/mnt/store/oracle\n
-volume oracle_oracle-data /mnt/.ix-apps/docker/volumes/oracle_oracle-data/_data -> /app/data
-bind  /mnt/store/oracle/config -> /app/config
-
-git_head=bb6ef880fadabb19f4ae68b4ef0a5ca4fb3acc33
-app_data_config_json=absent
-app_config_config_yaml=present
+container=oracle project=oracle source=/app/data volume=oracle_oracle-data
