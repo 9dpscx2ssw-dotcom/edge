@@ -39,6 +39,7 @@ universe:
   - {symbol: USDCHF, enabled: false}
   - {symbol: USDCAD, enabled: false}
   # ── FX crosses / EM ──
+  - {symbol: GBPJPY, enabled: false}   # multi_bb_app's source instrument
   - {symbol: EURJPY, enabled: false}
   - {symbol: EURGBP, enabled: false}
   - {symbol: EURAUD, enabled: false}
@@ -206,6 +207,13 @@ risk:
   # close clears it early; 0 disables). Stops counter-trend re-entry loops.
   loss_streak_trades: 3
   loss_streak_cooldown_minutes: 60
+  # Re-entry spacing (churn brake): block ANY re-open by a strategy on a symbol
+  # for this many bars of that strategy's own timeframe after its last close,
+  # win or lose. Unconditional (unlike loss_streak_*, which needs N losses) —
+  # catches the flicker re-entries the edge-triggered emitter misses. 0 = off.
+  # NB: this is the per-strategy brake; aggregation.reentry_cooldown_bars is the
+  # separate consensus-book one.
+  reentry_cooldown_bars: 0
   min_confidence: 0.3             # minimum signal conviction (0-1) to trade
   # Leverage settings (for margin accounts). Leverage caps margin capacity
   # (max notional per order); it never scales position size.
@@ -403,9 +411,14 @@ filters:
   noise: false
   noise_mode: observe        # observe (tag only) | enforce (veto)
   noise_min_ema_atr: 0.4
+  # Upper bound of the separation band: also block entries where the EMA spread
+  # exceeds this many ATRs (already-extended, late entry). 0 = off (floor only).
+  noise_max_ema_atr: 0.0
   # Minimum-timeframe gate: block signals from strategies whose timeframe is
   # below min_timeframe_minutes (sub-hourly strategies ran structurally
   # negative in every runtime window). Off by default; toggle in Settings.
+  # NB: set the floor to 10 (blocks 1m/5m), NOT 16-20 — several profitable
+  # strategies run on 15m, so cull those per-strategy, not with a blanket floor.
   timeframe: false
   min_timeframe_minutes: 0.0
   # Strategy-family × market-regime policy. `evaluate_regime` vetoes a signal

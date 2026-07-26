@@ -19,6 +19,7 @@ from pathlib import Path
 from ..config import Config
 from ..data.feeds import MacroFeed, MarketFeed, NewsFeed
 from ..data.models import NewsItem, Side, Signal
+from ..execution import fx
 from ..execution.broker import Broker, PaperBroker
 from ..execution.netting import NET_TAG, NettingBroker
 from ..features import feature_store
@@ -111,6 +112,25 @@ def _trailing_stop(
         return t if t > cur_stop else None
     t = peak_price + trail_mult * atr
     return t if t < cur_stop else None
+
+
+def _ema_trailing_stop(
+    side: Side,
+    ema_value: float,
+    cur_stop: float | None,
+) -> float | None:
+    """New stop when a position's stop should ride a moving-average line.
+
+    Used by strategies (``Strategy.trail_ema_period``) whose source design
+    places the stop at the EMA level rather than a fixed ATR distance. One-way
+    only: returns the new stop if it tightens risk (up for longs, down for
+    shorts), else ``None``. Never widens, and never fires on a stale/zero EMA.
+    """
+    if cur_stop is None or ema_value <= 0:
+        return None
+    if side == Side.BUY:
+        return ema_value if ema_value > cur_stop else None
+    return ema_value if ema_value < cur_stop else None
 
 
 class Agent:
@@ -269,12 +289,18 @@ class Agent:
         self._rl_diverged: bool = False
         # Loss-streak cooldown: bench a strategy on a symbol after N straight
         # losing round-trips there (the counter-trend re-entry loop).
-        from ..risk.cooldown import LossStreakGuard
+        from ..risk.cooldown import LossStreakGuard, ReentryCooldown
         self._cooldown = LossStreakGuard(
             max_streak=int(config.get("risk", "loss_streak_trades", default=3) or 0),
             cooldown_minutes=float(
                 config.get("risk", "loss_streak_cooldown_minutes", default=60) or 0),
         )
+        # Unconditional per-strategy re-entry spacing (churn brake). Blocks a
+        # re-open for N bars of the strategy's own timeframe after any close,
+        # win or lose — targets the flicker re-entries the edge-triggered
+        # emitter misses. 0 ⇒ off.
+        self._reentry = ReentryCooldown(
+            bars=int(config.get("risk", "reentry_cooldown_bars", default=0) or 0))
 
         # ── operational controls (institutional-practices tranche) ──────────
         # Hash-chained audit trail, operator alerting, pre-trade compliance,
@@ -885,6 +911,125 @@ class Agent:
                             pos.context["stop"] = stop = new_stop
                             log.debug("Trail %s/%s: stop -> %.5f (peak=%.5f atr=%.5f)",
                                       symbol, pos.strategy, new_stop, peak, atr)
+                # Strategy-specific EMA-line trailing stop (e.g. parsar_cci_ema_m1:
+                # "Stop Loss level should be placed at the EMA level"). Opt-in
+                # per strategy via `trail_ema_period`; reads the same per-(symbol,
+                # timeframe) feature cache the signal loop populates, so no
+                # extra fetch. One-way ratchet, same convention as breakeven/ATR
+                # trailing above — never widens the stop.
+                strat_obj = self.strategies.get(pos.strategy)
+                ema_period = int(getattr(strat_obj, "trail_ema_period", 0) or 0)
+                if (strat_obj is not None and ema_period and stop is not None
+                        and strat_obj.p("ema_trail_enabled") > 0):
+                    strat_tf = getattr(strat_obj, "timeframe", self.tf)
+                    cached = self._feat_cache.get((symbol, strat_tf))
+                    ema_val = getattr(cached[1], f"ema{ema_period}", 0.0) if cached else 0.0
+                    new_stop = _ema_trailing_stop(pos.side, ema_val, stop)
+                    if new_stop is not None:
+                        pos.context["stop"] = stop = new_stop
+                        log.debug("EMA-trail %s/%s: stop -> %.5f (ema%d=%.5f)",
+                                  symbol, pos.strategy, new_stop, ema_period, ema_val)
+                # Strategy-specific arbitrary-field trailing stop (e.g.
+                # alligator: "Stop Loss is to be placed 1 point lower [higher]
+                # than SMA144 (all the time)" — a continuously-tracking stop,
+                # not one set once at entry). Opt-in via `trail_field` (any
+                # FeatureSet attribute name, e.g. "sma144"); distinct from
+                # `trail_ema_period` above, which looks up `ema{N}` by period
+                # rather than an arbitrary named field. `trail_buffer_points`
+                # offsets it by FX points beyond the field value.
+                trail_field = getattr(strat_obj, "trail_field", "") if strat_obj else ""
+                if (strat_obj is not None and trail_field and stop is not None
+                        and strat_obj.p("trail_field_enabled") > 0):
+                    strat_tf = getattr(strat_obj, "timeframe", self.tf)
+                    cached = self._feat_cache.get((symbol, strat_tf))
+                    field_val = getattr(cached[1], trail_field, 0.0) if cached else 0.0
+                    point = fx.point_size(symbol) or 0.0
+                    buffer_dist = strat_obj.p("trail_buffer_points") * point
+                    ref = (field_val - buffer_dist if pos.side == Side.BUY
+                           else field_val + buffer_dist)
+                    new_stop = _ema_trailing_stop(pos.side, ref, stop)
+                    if new_stop is not None:
+                        pos.context["stop"] = stop = new_stop
+                        log.debug("Field-trail %s/%s: stop -> %.5f (%s=%.5f)",
+                                  symbol, pos.strategy, new_stop, trail_field, field_val)
+                # Strategy-specific EMA-cross exit (e.g. cci200_ema_pivot_app:
+                # "Take Profit ... after the 10 EMA and 21 EMA cross each other
+                # in the opposite direction"). Opt-in via `ema_cross_exit`;
+                # closes outright rather than moving the stop, since the app
+                # spec treats this as a full exit signal, not a ratchet.
+                if strat_obj is not None and getattr(strat_obj, "ema_cross_exit", False):
+                    strat_tf = getattr(strat_obj, "timeframe", self.tf)
+                    cached = self._feat_cache.get((symbol, strat_tf))
+                    feats = cached[1] if cached else None
+                    fast_field = getattr(strat_obj, "ema_cross_exit_fast", "ema10")
+                    slow_field = getattr(strat_obj, "ema_cross_exit_slow", "ema21")
+                    fast_val = getattr(feats, fast_field, None) if feats else None
+                    slow_val = getattr(feats, slow_field, None) if feats else None
+                    flipped = fast_val is not None and slow_val is not None and (
+                        (pos.side == Side.BUY and fast_val < slow_val) or
+                        (pos.side == Side.SELL and fast_val > slow_val))
+                    if flipped:
+                        log.debug("EMA-cross exit for %s/%s: ema10/ema21 flipped against %s",
+                                  symbol, pos.strategy, pos.side.value)
+                        await self._close(broker, symbol, self._last_view.get(symbol, {}),
+                                          pos.strategy, reason="ema-cross-exit")
+                        continue
+                # Strategy-specific Alligator-cross exit (e.g. alligator:
+                # "Long positions are to be closed once the green line
+                # [lips] of the Alligator indicator has crossed the red
+                # line [teeth] from above" — mirror for shorts). Opt-in via
+                # `alligator_cross_exit`.
+                if strat_obj is not None and getattr(strat_obj, "alligator_cross_exit", False):
+                    strat_tf = getattr(strat_obj, "timeframe", self.tf)
+                    cached = self._feat_cache.get((symbol, strat_tf))
+                    feats = cached[1] if cached else None
+                    flipped = feats is not None and (
+                        (pos.side == Side.BUY and feats.alligator_lips < feats.alligator_teeth) or
+                        (pos.side == Side.SELL and feats.alligator_lips > feats.alligator_teeth))
+                    if flipped:
+                        log.debug("Alligator-cross exit for %s/%s: lips/teeth flipped against %s",
+                                  symbol, pos.strategy, pos.side.value)
+                        await self._close(broker, symbol, self._last_view.get(symbol, {}),
+                                          pos.strategy, reason="alligator-cross-exit")
+                        continue
+                # Strategy-specific stochastic-exhaustion exit (e.g.
+                # ema_stoch_rsi: "Close long positions when Stochastic rises
+                # above 70. Close short positions when Stochastic falls below
+                # 30."). Opt-in via `stoch_exhaustion_exit`; thresholds are
+                # read from the strategy's own params (`stoch_exit_upper` /
+                # `stoch_exit_lower`), not the entry-side 80/20 zone bounds.
+                if strat_obj is not None and getattr(strat_obj, "stoch_exhaustion_exit", False):
+                    strat_tf = getattr(strat_obj, "timeframe", self.tf)
+                    cached = self._feat_cache.get((symbol, strat_tf))
+                    feats = cached[1] if cached else None
+                    exhausted = feats is not None and (
+                        (pos.side == Side.BUY and feats.stoch_k > strat_obj.p("stoch_exit_upper")) or
+                        (pos.side == Side.SELL and feats.stoch_k < strat_obj.p("stoch_exit_lower")))
+                    if exhausted:
+                        log.debug("Stoch-exhaustion exit for %s/%s: stoch_k=%.1f against %s",
+                                  symbol, pos.strategy, feats.stoch_k, pos.side.value)
+                        await self._close(broker, symbol, self._last_view.get(symbol, {}),
+                                          pos.strategy, reason="stoch-exhaustion-exit")
+                        continue
+                # Strategy-specific RSI-exhaustion exit (e.g. momentum_forex:
+                # "Buy transaction shall be closed when RSI enters the
+                # overbought zone. Sell transaction shall be closed when the
+                # indicator enters the oversold zone."). Opt-in via
+                # `rsi_exhaustion_exit`; thresholds read from the strategy's
+                # own params (`rsi_exit_upper` / `rsi_exit_lower`).
+                if strat_obj is not None and getattr(strat_obj, "rsi_exhaustion_exit", False):
+                    strat_tf = getattr(strat_obj, "timeframe", self.tf)
+                    cached = self._feat_cache.get((symbol, strat_tf))
+                    feats = cached[1] if cached else None
+                    exhausted = feats is not None and (
+                        (pos.side == Side.BUY and feats.rsi > strat_obj.p("rsi_exit_upper")) or
+                        (pos.side == Side.SELL and feats.rsi < strat_obj.p("rsi_exit_lower")))
+                    if exhausted:
+                        log.debug("RSI-exhaustion exit for %s/%s: rsi=%.1f against %s",
+                                  symbol, pos.strategy, feats.rsi, pos.side.value)
+                        await self._close(broker, symbol, self._last_view.get(symbol, {}),
+                                          pos.strategy, reason="rsi-exhaustion-exit")
+                        continue
                 if pos.side == Side.BUY:
                     hit = (stop and price <= stop) or (tp and price >= tp)
                 else:
@@ -898,6 +1043,8 @@ class Agent:
                               else "stop-loss" if is_stop else "take-profit")
                     log.debug("Exit triggered for %s: %s at %.5f (entry: %.5f, stop: %s, tp: %s)",
                              symbol, reason, price, pos.entry_price, stop, tp)
+                    if strat_obj is not None:
+                        strat_obj.on_position_closed(symbol, pos.side, reason)
                     await self._close(broker, symbol, self._last_view.get(symbol, {}),
                                       pos.strategy, reason=reason)
 
@@ -1024,6 +1171,7 @@ class Agent:
         if closed.mode != "learning":
             if closed.pnl is not None:
                 self._cooldown.record(closed.strategy or "", closed.symbol, closed.pnl)
+                self._reentry.record_close(closed.strategy or "", closed.symbol)
                 # Real account P/L is strictly real-book only. Shadow closes remain
                 # journaled for analytics but must never change the real total.
                 if closed.mode == "real" and self._closed_pl is not None:
@@ -1602,6 +1750,14 @@ class Agent:
         for strat in active_strats:
             tf = getattr(strat, "timeframe", self.tf)
             timeframes.add(tf)
+            # Higher-timeframe confluence: a strategy that sets
+            # `confirm_timeframe` gets that timeframe fetched too, available
+            # below as `_confirm_features`. Generic infrastructure — no
+            # strategy currently opts in (parsar_cci_ema was rebuilt into
+            # separate per-timeframe strategies instead of using this).
+            confirm_tf = getattr(strat, "confirm_timeframe", "")
+            if confirm_tf and strat.p("mtf_confirm_enabled") > 0:
+                timeframes.add(confirm_tf)
 
         # Fetch candles for every timeframe concurrently (was sequential — the
         # main reason a multi-symbol fast loop couldn't finish in its interval).
@@ -1840,6 +1996,12 @@ class Agent:
                 continue    # this bar was already decided; nothing new to say
             features = features_by_tf.get(tf, primary_features)
 
+            # Attach this cycle's higher-timeframe confluence features (if the
+            # strategy opted in via `confirm_timeframe`); None otherwise.
+            confirm_tf = getattr(strat, "confirm_timeframe", "")
+            strat._confirm_features = (
+                features_by_tf.get(confirm_tf) if confirm_tf else None)
+
             # Edge-triggered emission: the strategies are level-based (they
             # emit while a condition holds). Act only on the bar where a side
             # first appears; repeats are suppressed until the condition
@@ -1869,6 +2031,7 @@ class Agent:
                         "direction": signal.side.value,
                         "symbol": signal.symbol,
                         "strategy_name": strat.name,
+                        "timeframe": strat.timeframe,
                         "ts": signal.ts.isoformat(),
                     },
                     "analysis": signal.rationale,
@@ -1908,6 +2071,16 @@ class Agent:
                 if wait > 0:
                     self._filter_rejects["cooldown"] += 1
                     self.journal.record_signal(signal, "rejected_cooldown",
+                                               features.last_price)
+                    continue
+
+                # Re-entry spacing: a level signal that flickered off then
+                # re-fired within N bars of the last close is churn — skip it.
+                if self._reentry.blocked_seconds(
+                        strat.name, symbol,
+                        self._tf_minutes(getattr(strat, "timeframe", "") or "") * 60) > 0:
+                    self._filter_rejects["reentry"] += 1
+                    self.journal.record_signal(signal, "rejected_reentry",
                                                features.last_price)
                     continue
 
@@ -2006,6 +2179,17 @@ class Agent:
                         signal, raw, features, book=book, regime=regime,
                         rejection=rejection)
                     continue
+
+                # Strategy-specific bracket override (e.g. cci200_ema_pivot_app:
+                # fixed-points stop + nearest-daily-pivot target, in place of
+                # the generic ATR bracket vet() just computed).
+                custom = strat.custom_brackets(signal.side, features.last_price, symbol)
+                if custom is not None:
+                    custom_stop, custom_tp = custom
+                    if custom_stop is not None:
+                        order.stop_loss = custom_stop
+                    if custom_tp is not None:
+                        order.take_profit = custom_tp
 
                 # RL gate: let the policy decide whether this signal is worth taking.
                 decision = None

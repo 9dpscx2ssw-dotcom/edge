@@ -167,16 +167,32 @@ def _signal_aggregates(db: Database) -> dict[str, dict]:
 
 
 def _backtest_candles(symbol: str, n_bars: int, timeframe: str = "1h"):
-    """Real Capital.com candles for backtests, with a synthetic fallback.
+    """Cached DB candles first, then real Capital.com candles, then synthetic.
 
-    Returns (candles, source) where source is "capital.com" or "synthetic". Uses
-    the configured Capital.com credentials when present; on missing creds or any
-    fetch failure it falls back to a reproducible synthetic series so the endpoint
-    always works. The real path is untested without live creds — it is structured
-    defensively and never raises into the request.
+    Returns (candles, source) where source is "cached_db", "capital.com", or
+    "synthetic". The agent's fast loop persists every closed bar it sees
+    (`Database.store_candles`, `core/agent.py`), so `data/gungnir.db`'s
+    `candles` table is real historical market data — reusing it means a
+    backtest needs no live credentials and no network round-trip, and stays
+    reproducible run to run (unlike a fresh Capital.com fetch). Falls through
+    to a live fetch (when creds are configured) and finally a synthetic
+    series so the endpoint always works even on an empty/fresh `data/`
+    volume. The real Capital.com path is untested without live creds — it is
+    structured defensively and never raises into the request.
     """
     pass  # logging imported at module level
     log = logging.getLogger(__name__)
+    try:
+        db = _open_db()
+        try:
+            cached = db.load_candles(symbol, timeframe, limit=n_bars)
+        finally:
+            db.close()
+        if cached and len(cached) >= 80:        # enough to warm indicators
+            return cached, "cached_db"
+    except Exception as e:  # noqa: BLE001 — never fail the backtest on a DB read
+        log.warning("Cached-candle lookup failed for %s/%s (%s); trying live fetch",
+                    symbol, timeframe, e)
     cfg = _config()
     sec = cfg.secrets
     if sec.capital_com_api_key and sec.capital_com_identifier and sec.capital_com_password:
@@ -1034,6 +1050,7 @@ def create_app() -> FastAPI:
         "max_spread_bps": lambda v: float(v) >= 0,
         "adx_trend": lambda v: float(v) >= 0,
         "noise_min_ema_atr": lambda v: float(v) >= 0,
+        "noise_max_ema_atr": lambda v: float(v) >= 0,
         "min_timeframe_minutes": lambda v: float(v) >= 0,
     }
     _FILTER_MODES = {"regime_mode": {"observe", "shadow", "enforce"},
@@ -1166,7 +1183,16 @@ def create_app() -> FastAPI:
 
     @app.get("/api/backtest")
     def get_backtest_cached() -> JSONResponse:
-        return JSONResponse({})
+        """Last `scripts/backtest_all_strategies.py` run, if one has been written
+        to disk — powers the Strategies/Overview backtest-PF heatmap. Read-only;
+        the file is produced offline, never by a request to this server."""
+        path = Path(os.getenv("GUNGNIR_BACKTEST_ALL_PATH", "data/backtest_all_strategies.json"))
+        if not path.exists():
+            return JSONResponse({})
+        try:
+            return JSONResponse(json.loads(path.read_text()))
+        except (OSError, json.JSONDecodeError):
+            return JSONResponse({})
 
     @app.post("/api/backtest/run")
     def run_backtest(body: dict = Body(...)) -> JSONResponse:

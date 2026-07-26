@@ -67,3 +67,48 @@ class LossStreakGuard:
             self._streak[key] = self.max_streak - 1
             return 0.0
         return remaining
+
+
+class ReentryCooldown:
+    """Unconditional per-strategy re-entry spacing (churn brake).
+
+    Distinct from ``LossStreakGuard``, which benches only after ``max_streak``
+    *losses*: this blocks ANY re-open on a (strategy, symbol) for ``bars`` bars
+    of that strategy's own timeframe after its last *close*, win or lose. It
+    targets the residual churn the edge-triggered emitter can't catch — a level
+    signal that releases for a bar and immediately re-fires into the same tape.
+    The 23–24 Jul runtime counterfactual showed those quick re-entries close at
+    ~7% win, so spacing them out removed loss with negligible give-up. ``bars``
+    = 0 disables it (default), so it must be opted into per config.
+    """
+
+    def __init__(self, bars: int = 0):
+        self.bars = int(bars or 0)
+        self._last_close: dict[tuple[str, str], float] = {}
+
+    @property
+    def enabled(self) -> bool:
+        return self.bars > 0
+
+    def record_close(self, strategy: str, symbol: str,
+                     now: float | None = None) -> None:
+        """Stamp the close time for a (strategy, symbol) round-trip."""
+        if not self.enabled or not strategy or not symbol:
+            return
+        self._last_close[(strategy, symbol)] = time.monotonic() if now is None else now
+
+    def blocked_seconds(self, strategy: str, symbol: str, bar_seconds: float,
+                        now: float | None = None) -> float:
+        """Seconds until this strategy may re-open on this symbol (0 = clear).
+
+        ``bar_seconds`` is the strategy timeframe's minutes×60; a strategy with
+        no prior close (or a non-positive bar length) is never blocked.
+        """
+        if not self.enabled or bar_seconds <= 0:
+            return 0.0
+        last = self._last_close.get((strategy, symbol))
+        if last is None:
+            return 0.0
+        now = time.monotonic() if now is None else now
+        remaining = self.bars * float(bar_seconds) - (now - last)
+        return remaining if remaining > 0 else 0.0

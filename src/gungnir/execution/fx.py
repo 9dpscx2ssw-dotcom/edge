@@ -34,6 +34,21 @@ def quote_currency(symbol: str) -> str:
     return "USD"
 
 
+def point_size(symbol: str) -> float | None:
+    """Standard FX pip size: 0.01 for JPY-quoted pairs, 0.0001 otherwise.
+
+    None for anything that isn't a genuine 6-letter ISO currency pair
+    (indices, commodities, crypto like BTCUSD) — "points" in the
+    app-strategy sense isn't a meaningful unit there, so callers should fall
+    back to their generic (ATR-based) distance instead of guessing a tick
+    size.
+    """
+    s = symbol.upper()
+    if len(s) == 6 and s[:3] in _CCY and s[3:] in _CCY:
+        return 0.01 if s.endswith("JPY") else 0.0001
+    return None
+
+
 def to_account_ccy(symbol: str, amount: float,
                    price_lookup: Callable[[str], float | None],
                    account_ccy: str = "USD") -> float:

@@ -51,6 +51,18 @@ strategies:
     params:
       period_bb: 20
 
+  # Faithful replica of the source app spec: bounded dev2-dev3 entry zone
+  # (not the unbounded single-band trigger above), fixed-point exits, scoped
+  # to the app's own instrument (GBP/JPY — add it to config.yaml's
+  # instruments list and enable it to actually trade this). 15m for the same
+  # documented cost-floor reason as multi_bb, not the app's M1. Shadow-only
+  # once GBPJPY is enabled; starts off.
+  - name: multi_bb_app
+    mode: "off"
+    timeframe: 15m
+    symbols: [GBPJPY]
+    params: {}
+
   - name: fvg_m30                # fair-value-gap fill — best live win rate at M30 (59%)
     mode: shadow
     timeframe: 30m
@@ -63,9 +75,20 @@ strategies:
     mode: shadow
     timeframe: 15m
     symbols: []
-    params:
-      period_bb: 20
-      period_rsi: 11
+    # BB period (20) and RSI period (11) are both fixed, globally-computed
+    # features (KrakenFeatureSet.bb_* / rsi11) — not per-strategy params, so
+    # nothing belongs here (the old period_rsi: 11 key was dead: the code
+    # read the shared RSI(14) field regardless of what this said).
+    params: {}
+
+  # Source app's second listed timeframe (M15, M30) — its own exit-table row
+  # (bb_rsi_m30 in _BBRSIBase._TP_POINTS). Shadow-eligible from the
+  # dashboard once it has its own track record; starts off.
+  - name: bb_rsi_m30
+    mode: "off"
+    timeframe: 30m
+    symbols: []
+    params: {}
 
   - name: macd_stoch             # MACD + stochastic momentum
     mode: shadow
@@ -89,7 +112,8 @@ strategies:
     symbols: []
     params:
       period_cci: 14
-      threshold: 100
+      cci_threshold: 150         # app spec's overbought/oversold zone (was "threshold",
+                                  # a key the code never read — silently inert)
 
   # ── New EMA strategies (shadow, independently attributed at M5 and M15) ──
   - name: ema921_adx_dmi_m5
@@ -130,13 +154,25 @@ strategies:
     params:
       period_cci: 14
 
-  - name: parsar_cci_ema
+  # Source app's "Scalping with Parabolic SAR + CCI": rebuilt as two
+  # independent per-timeframe strategies (its own indicator list assigns
+  # EMA50 to M1, EMA21 to M5) rather than one M1-primary strategy with an M5
+  # confirmation fetch. Both m1/m5: filters.timeframe (min_timeframe_minutes:
+  # 10 in config.yaml) vetoes their signals whenever enabled — the repo's
+  # existing M1/M5 cost-floor policy, not worked around here.
+  - name: parsar_cci_ema_m1
     mode: "off"
-    timeframe: 15m
+    timeframe: 1m
     symbols: []
     params:
       period_cci: 45
-      period_ema: 50
+
+  - name: parsar_cci_ema_m5
+    mode: "off"
+    timeframe: 5m
+    symbols: []
+    params:
+      period_cci: 45
 
   - name: bb_macd_sma
     mode: "off"
@@ -146,7 +182,30 @@ strategies:
       period_bb: 20
       std_dev: 2.0
 
+  # Faithful replica of the source app's BB+MACD+MA spec (contrarian MACD
+  # condition) — bb_macd_sma above intentionally diverges from this after the
+  # literal version scored a 1.8% win rate live (audit F-16). Shadow-only
+  # until this variant has its own track record.
+  - name: bb_macd_sma_app
+    mode: "off"
+    timeframe: 15m
+    symbols: []
+    params:
+      period_bb: 20
+      std_dev: 2.0
+
   - name: cci200_ema_pivot
+    mode: "off"
+    timeframe: 15m
+    symbols: []
+    params:
+      period_cci: 200
+
+  # Faithful replica of the source app spec — cci200_ema_pivot above adds a
+  # price-vs-pivot entry filter and a stricter EMA stack the app never
+  # specifies (and its "pivot" is a per-bar artifact, not a real daily
+  # level). Shadow-only until this variant has its own track record.
+  - name: cci200_ema_pivot_app
     mode: "off"
     timeframe: 15m
     symbols: []
@@ -181,6 +240,30 @@ strategies:
   - name: ao_macd
     mode: "off"
     timeframe: 4h
+    symbols: []
+    params: {}
+
+  # Faithful replica of the source app "Awesome and MACD": a zero-line AO
+  # cross confirmed by the MACD(5,7,4) histogram's zone — ao_macd above uses
+  # a static level-agreement check instead. Shadow-only once vetted; off by
+  # default.
+  - name: ao_macd_app
+    mode: "off"
+    timeframe: 4h
+    symbols: []
+    params: {}
+
+  # Source app "Follow the Trend": EMA(4,10) cross + ADX(28)/DI + MACD(5,10,4),
+  # registered per its own H4/D1 exit-table rows (60pt/200pt TP, SL = TP/3).
+  - name: follow_the_trend_h4
+    mode: "off"
+    timeframe: 4h
+    symbols: []
+    params: {}
+
+  - name: follow_the_trend_d1
+    mode: "off"
+    timeframe: 1d
     symbols: []
     params: {}
 
@@ -278,3 +361,123 @@ strategies:
     symbols: []
     params:
       period_ema: 9
+
+  # Source app "Goldmine": BB(20,2) + Stochastic(5,3,3), point-designed for
+  # XAUUSD — Gungnir's configured epic for that pair is GOLD (config.yaml),
+  # so symbols is scoped there rather than left open to the whole universe.
+  - name: goldmine_xauusd
+    mode: "off"
+    timeframe: 1d
+    symbols: [GOLD]
+    params: {}
+
+  # Source app "Speculative": ZigZag(Depth=100)-as-fractal-swing + RSI(14),
+  # scoped to the app's own instrument pair.
+  - name: speculative_zigzag_rsi
+    mode: "off"
+    timeframe: 15m
+    symbols: [EURUSD, GBPUSD]
+    params: {}
+
+  # ── Final strategy-bank batch (25 Jul): app-spec strategies from the last
+  # screenshot round. All new, never traded — start off like every prior
+  # addition this session.
+
+  # Source app "Parabolic SAR & Awesome": PSAR(0.01,0.1) + EMA5 + AO,
+  # scoped to the app's own instrument pairs.
+  - name: parsar_awesome
+    mode: "off"
+    timeframe: 30m
+    symbols: [USDCHF, EURUSD]
+    params: {}
+
+  # Source app "Strategy based on the indicators CCI and EMA": PSAR(0.2,0.02)
+  # + EMA(8,28) + CCI(30), SAR-trailed stop.
+  - name: cci_ema_psar
+    mode: "off"
+    timeframe: 1h
+    symbols: []
+    params: {}
+
+  # Source app "Strategy based on EMA, ADX and MACD": mirror-image entry
+  # conditions of follow_the_trend_h4/d1 (same indicator set, inverted
+  # signs) — kept as a fully separate strategy, not a variant.
+  - name: ema_adx_macd_contrarian
+    mode: "off"
+    timeframe: 4h
+    symbols: []
+    params: {}
+
+  # Source app "Momentum Forex Trading": SMA(11,21) + Momentum(30) + RSI(14),
+  # RSI-exhaustion exit.
+  - name: momentum_forex
+    mode: "off"
+    timeframe: 15m
+    symbols: []
+    params: {}
+
+  # Source app "Three indicators": PSAR + Awesome Oscillator + Accelerator
+  # Oscillator, same-candle trigger.
+  - name: psar_ao_ac
+    mode: "off"
+    timeframe: 1h
+    symbols: []
+    params: {}
+
+  # Source app "Trading system CCI and EMA": same EMA(8,28)/CCI(30) entry as
+  # cci_ema_psar above, but fixed-points exit instead of SAR trail — the
+  # app's own distinct risk-management overlay, kept separate.
+  - name: cci_ema_fixed
+    mode: "off"
+    timeframe: 30m
+    symbols: []
+    params: {}
+
+  # Source app "100 EMA on two timeframes": M15 EMA(5,100) cross confirmed
+  # by H1 EMA(5,100) alignment via confirm_timeframe.
+  - name: ema100_dual_tf
+    mode: "off"
+    timeframe: 15m
+    symbols: []
+    params: {}
+
+  # Source app "Strategy with the use of the indicators Ichimoku and Awesome
+  # Oscillator": Senkou Span B + AO.
+  - name: ichimoku_awesome
+    mode: "off"
+    timeframe: 1h
+    symbols: []
+    params: {}
+
+  # Source app 'Scalping system "10 points"': MACD(13,26,9) + Stochastic(5,3,3).
+  - name: scalp_macd_stoch_10pt
+    mode: "off"
+    timeframe: 1m
+    symbols: []
+    params: {}
+
+  # Source app "Strategy with the use of EMA and Awesome Oscillator":
+  # EMA(200) + AO.
+  - name: ema200_awesome
+    mode: "off"
+    timeframe: 1h
+    symbols: []
+    params: {}
+
+  # Source app "The right moment": BB(20,2) + Williams %R(25) + RSI(5) — the
+  # app describes continuous ranging-market trade management that doesn't
+  # reduce to a simple rule pair; this keeps the concrete entry trigger and
+  # approximates the exit as a BB-mid/band bracket (see class docstring).
+  - name: bb_williams_rsi_ranging
+    mode: "off"
+    timeframe: 15m
+    symbols: []
+    params: {}
+
+  # Source app "Strategy with the use of three moving average lines":
+  # SMA(13,26,100) triple cross, SMA13/26-cross exit.
+  - name: triple_sma
+    mode: "off"
+    timeframe: 4h
+    symbols: []
+    params: {}

@@ -46,16 +46,23 @@ def test_params_change_behavior():
     assert not strict.generate(f)                    # 120 < 150 → silent
 
 
-def test_default_params_preserve_old_firing_behavior():
-    f = _features(cci14=-130.0)
-    sigs = CCIReversalStrategy().generate(f)
+def test_default_params_confirm_reversal_not_single_threshold():
+    # 25 Jul fix: cci_reversal requires overbought AFTER a prior oversold
+    # touch (the app's actual "CCI strategy" spec) — a bare single-threshold
+    # touch, with no prior opposite extreme, must not fire on its own.
+    s = CCIReversalStrategy()
+    assert s.generate(_features(cci14=-160.0)) == []          # arms, no fire
+    sigs = s.generate(_features(cci14=160.0))                 # confirmed reversal
     assert sigs and sigs[0].side == Side.BUY
     assert sigs[0].conviction >= 0.5                 # never below the old base
 
 
 def test_graded_conviction_rises_with_signal_strength():
-    weak = CCIReversalStrategy().generate(_features(cci14=-105.0))[0]
-    strong = CCIReversalStrategy().generate(_features(cci14=-250.0))[0]
+    weak_strat, strong_strat = CCIReversalStrategy(), CCIReversalStrategy()
+    weak_strat.generate(_features(cci14=-160.0))
+    strong_strat.generate(_features(cci14=-160.0))
+    weak = weak_strat.generate(_features(cci14=155.0))[0]
+    strong = strong_strat.generate(_features(cci14=250.0))[0]
     assert strong.conviction > weak.conviction
 
 

@@ -284,3 +284,31 @@ def alligator(high: np.ndarray, low: np.ndarray, pj=13, pt=8, pl=5, sj=8, st=5, 
     teeth = smma(med, pt).shift(st)
     lips = smma(med, pl).shift(sl)
     return jaw.values, teeth.values, lips.values
+
+
+def williams_r(high: np.ndarray, low: np.ndarray, close: np.ndarray, period: int = 14) -> np.ndarray:
+    """Williams %R: -100 * (highest_high - close) / (highest_high - lowest_low), range [-100, 0]."""
+    h = pd.Series(high)
+    lo = pd.Series(low)
+    c = pd.Series(close)
+    hh = h.rolling(period, min_periods=1).max()
+    ll = lo.rolling(period, min_periods=1).min()
+    rng = (hh - ll).replace(0, 1e-10)
+    return (-100.0 * (hh - c) / rng).values
+
+
+def accelerator_oscillator(high: np.ndarray, low: np.ndarray) -> np.ndarray:
+    """Accelerator Oscillator (AC): AO - SMA(AO, 5)."""
+    ao = awesome_oscillator(high, low)
+    ao_sma5 = pd.Series(ao).rolling(5, min_periods=1).mean().values
+    return ao - ao_sma5
+
+
+def ichimoku_senkou_b(high: np.ndarray, low: np.ndarray, period: int = 52, shift: int = 26) -> np.ndarray:
+    """Ichimoku Senkou Span B: midpoint of the period-high/period-low, plotted
+    `shift` bars ahead — i.e. the value visible at bar i was computed from data
+    ending `shift` bars earlier."""
+    h = pd.Series(high)
+    lo = pd.Series(low)
+    mid = (h.rolling(period, min_periods=1).max() + lo.rolling(period, min_periods=1).min()) / 2
+    return mid.shift(shift).values

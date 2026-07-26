@@ -18,20 +18,32 @@ _CATEGORIES = {
 # names missing (trend + oscillator), so a third of the book was ungated even
 # with regime enforce ON. `test_every_strategy_has_a_family` guards regressions.
 STRATEGY_FAMILIES = {
-    "mean_reversion": "mean_reversion", "cci_reversal": "mean_reversion", "bb_rsi": "mean_reversion", "multi_bb": "mean_reversion", "bb_macd_sma": "mean_reversion", "bb_rsi_cutting": "mean_reversion",
-    "parsar_cci_ema": "trend", "adx_momentum_ema": "trend", "alligator": "trend", "trend_following": "trend",
+    "mean_reversion": "mean_reversion", "cci_reversal": "mean_reversion", "bb_rsi": "mean_reversion", "bb_rsi_m30": "mean_reversion", "multi_bb": "mean_reversion", "multi_bb_app": "mean_reversion", "bb_macd_sma": "mean_reversion", "bb_macd_sma_app": "mean_reversion", "bb_rsi_cutting": "mean_reversion", "goldmine_xauusd": "mean_reversion",
+    "speculative_zigzag_rsi": "mean_reversion",
+    "parsar_cci_ema_m1": "trend", "parsar_cci_ema_m5": "trend",
+    "adx_momentum_ema": "trend", "alligator": "trend", "trend_following": "trend",
     # Previously-missing trend strategies (mapped 24 Jul): fresh EMA/CCI/ADX
     # crosses and pivots — subject to the trend × range_high/range_low avoid rule.
     "ema78_crossover_m5": "trend", "ema78_crossover_m15": "trend",
     "ema921_adx_dmi_m5": "trend", "ema921_adx_dmi_m15": "trend",
-    "cci_macd": "trend", "cci200_ema_pivot": "trend", "intelligent_trading": "trend",
+    "cci_macd": "trend", "cci200_ema_pivot": "trend", "cci200_ema_pivot_app": "trend",
+    "intelligent_trading": "trend",
+    "follow_the_trend_h4": "trend", "follow_the_trend_d1": "trend",
     # Oscillator strategies (mapped 24 Jul for correct lineage; no oscillator
     # avoid rule ships yet — no evidence — so this fixes attribution without
     # imposing an unvalidated gate).
     "macd_stoch": "oscillator", "ema_stoch_rsi": "oscillator", "ao_macd": "oscillator",
+    "ao_macd_app": "oscillator",
     "fvg_m1": "structure", "fvg_m5": "structure", "fvg_m15": "structure", "fvg_m30": "structure",
     "scalp_ema_vwap_m1": "scalp", "scalp_ema_vwap_m5": "scalp",
     "hma_dc_m1": "hybrid", "hma_dc_m5": "hybrid", "hma_dc_m15": "hybrid", "hma_dc_h1": "hybrid", "hma_dc_h4": "hybrid", "hma_dc_d1": "hybrid", "consensus": "ensemble",
+    # Final strategy-bank batch (25 Jul): app-spec strategies from the last
+    # screenshot round.
+    "parsar_awesome": "trend", "cci_ema_psar": "trend", "cci_ema_fixed": "trend",
+    "ema100_dual_tf": "trend", "ichimoku_awesome": "trend", "ema200_awesome": "trend",
+    "triple_sma": "trend", "momentum_forex": "trend", "psar_ao_ac": "trend",
+    "ema_adx_macd_contrarian": "mean_reversion", "bb_williams_rsi_ranging": "mean_reversion",
+    "scalp_macd_stoch_10pt": "scalp",
 }
 _REGIME_MODES = {"observe", "shadow", "enforce"}
 _NOISE_MODES = {"observe", "enforce"}
@@ -96,9 +108,18 @@ class FilterConfig:
     # below ``noise_min_ema_atr`` ATRs (chop, no established trend). Ships in
     # ``observe`` (tags every decision but blocks nothing) so the signal can be
     # validated against realized PnL before it ever gates a trade.
+    #
+    # ``noise_max_ema_atr`` adds the opposite bound: block entries where the
+    # spread is ABOVE it (the move is already extended, so a fresh entry is
+    # late — the runtime data's separation gradient is non-monotonic, with the
+    # 0.5–1.0 ATR band winning and both the compressed and extended tails
+    # losing). It converts the floor into a band. 0.0 disables the upper bound
+    # so the default behaviour is unchanged (floor only); it is the least
+    # out-of-sample-validated half of the gate and must be opted into.
     noise: bool = False
     noise_mode: str = "observe"          # observe | enforce
     noise_min_ema_atr: float = 0.4
+    noise_max_ema_atr: float = 0.0       # 0 ⇒ no upper bound (floor only)
     # Minimum-timeframe gate: block signals from strategies whose timeframe is
     # below ``min_timeframe_minutes`` (sub-hourly strategies were structurally
     # negative in every runtime window). Off by default — the least out-of-
@@ -165,10 +186,12 @@ def evaluate_noise(features, cfg: FilterConfig) -> tuple[bool, float | None]:
     """No-trend-structure reading for one decision.
 
     Returns ``(would_block, ema_spread_in_atr)``. ``would_block`` is True when
-    the fast/slow EMA spread is below ``noise_min_ema_atr`` ATRs — a chop entry
-    with no established trend. Pure and side-effect-free; the caller decides
-    whether to act (``enforce``) or merely tag it (``observe``). ATR/EMA missing
-    ⇒ ``(False, None)`` so a thin feature set never blocks.
+    the fast/slow EMA spread is below ``noise_min_ema_atr`` ATRs (a chop entry
+    with no established trend) or — when ``noise_max_ema_atr`` is set — above it
+    (the trend is already extended, so a fresh entry is late). Pure and
+    side-effect-free; the caller decides whether to act (``enforce``) or merely
+    tag it (``observe``). ATR/EMA missing ⇒ ``(False, None)`` so a thin feature
+    set never blocks.
     """
     ef = getattr(features, "ema_fast", None)
     es = getattr(features, "ema_slow", None)
@@ -176,7 +199,9 @@ def evaluate_noise(features, cfg: FilterConfig) -> tuple[bool, float | None]:
     if ef is None or es is None or not atr or atr <= 0:
         return False, None
     ext = abs(float(ef) - float(es)) / float(atr)
-    return ext < cfg.noise_min_ema_atr, round(ext, 4)
+    too_tight = ext < cfg.noise_min_ema_atr
+    too_wide = cfg.noise_max_ema_atr > 0 and ext > cfg.noise_max_ema_atr
+    return too_tight or too_wide, round(ext, 4)
 
 
 def market_regime_filter(signal, sentiment) -> tuple[bool, str | None]:

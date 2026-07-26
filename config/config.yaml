@@ -39,6 +39,7 @@ universe:
   - {symbol: USDCHF, enabled: false}
   - {symbol: USDCAD, enabled: false}
   # ── FX crosses / EM ──
+  - {symbol: GBPJPY, enabled: false}   # multi_bb_app's source instrument
   - {symbol: EURJPY, enabled: false}
   - {symbol: EURGBP, enabled: false}
   - {symbol: EURAUD, enabled: false}
@@ -222,6 +223,14 @@ risk:
   # close clears it early; 0 disables). Stops counter-trend re-entry loops.
   loss_streak_trades: 3
   loss_streak_cooldown_minutes: 60
+  # Re-entry spacing (churn brake): block ANY re-open by a strategy on a symbol
+  # for this many bars of that strategy's own timeframe after its last close,
+  # win or lose. Distinct from loss_streak_* (which needs N losses first) — this
+  # is unconditional, targeting the flicker re-entries the edge-triggered emitter
+  # misses. The 23-24 Jul window's quick re-entries (<3 bars post-close) closed
+  # at ~7% win / -100, so a 3-bar space removed loss with negligible give-up.
+  # 0 disables.
+  reentry_cooldown_bars: 3
   min_confidence: 0.3             # minimum signal conviction (0-1) to trade
   # Leverage settings (for margin accounts). Leverage caps margin capacity
   # (max notional per order); it never scales position size.
@@ -465,14 +474,27 @@ filters:
   noise: true
   noise_mode: enforce        # observe (tag only) | enforce (veto)
   noise_min_ema_atr: 0.4
+  # Upper bound of the separation band: also block entries where the EMA spread
+  # is ABOVE this many ATRs (the move is already extended, so a fresh entry is
+  # late). 0 = disabled (floor only). The 23-24 Jul window's separation gradient
+  # was non-monotonic (0.5-1.0 ATR won; both the compressed AND the >1.0 tail
+  # lost), but the upper half is thinner evidence than the floor, so it ships
+  # OFF — opt in from Settings once a window confirms it.
+  noise_max_ema_atr: 0.0
   # Minimum-timeframe gate: block signals from strategies whose timeframe is
-  # below min_timeframe_minutes. Toggle in the dashboard Settings tab. Sub-hourly
-  # strategies were structurally negative every window (1m/5m/15m all lost;
-  # 60m+ won), and dropping <=5min lifted the gated book to +179 / 43% win. But
-  # that cut is the least out-of-sample-validated fix, so it ships OFF with the
-  # floor pre-set to 10 (blocks 1m/5m, keeps 15m+) — flip it on from Settings
-  # once another window confirms.
-  timeframe: false
+  # below min_timeframe_minutes. ENABLED as of 2026-07-25 at min=10 — the
+  # 23-24 Jul window reconfirmed sub-15min explicit strategies were structurally
+  # negative (m1 -134/19%, m5 -185/30%) while 60m+ won (h1 +72/50%, h4 +74/33%),
+  # and the hma_dc family (identical logic, TF the only difference) isolates it:
+  # m1/m5/m15 lose with 25-37% near-stop, h1/h4 win with 0% near-stop. min=10
+  # drops ONLY m1/m5 uniformly (no positive-core strategy is sub-10m); it does
+  # NOT raise to 16-20 because several positive-core strategies (bb_rsi,
+  # cci_macd, ema921_adx_dmi_m15) run on 15m — that cut must stay per-
+  # strategy, not a blanket floor. (parsar_cci_ema formerly ran here too;
+  # 25 Jul rebuilt as parsar_cci_ema_m1/m5 at their native sub-10m
+  # timeframes, so this filter now vetoes them whenever enabled — expected,
+  # not a regression.) Toggle in the dashboard Settings tab.
+  timeframe: true
   min_timeframe_minutes: 10
 
 # Offline RL (advisory; see learning/rl). offline_advisory loads + shadow-tracks

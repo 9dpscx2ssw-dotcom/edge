@@ -99,13 +99,19 @@ strategies:
     params:
       period_cci: 14
 
-  - name: parsar_cci_ema
+  - name: parsar_cci_ema_m1
     mode: "off"
-    timeframe: 15m
+    timeframe: 1m
     symbols: []
     params:
       period_cci: 45
-      period_ema: 50
+
+  - name: parsar_cci_ema_m5
+    mode: "off"
+    timeframe: 5m
+    symbols: []
+    params:
+      period_cci: 45
 
   - name: bb_macd_sma
     mode: "off"
@@ -150,6 +156,24 @@ strategies:
   - name: ao_macd
     mode: "off"
     timeframe: 4h
+    symbols: []
+    params: {}
+
+  - name: ao_macd_app
+    mode: "off"
+    timeframe: 4h
+    symbols: []
+    params: {}
+
+  - name: follow_the_trend_h4
+    mode: "off"
+    timeframe: 4h
+    symbols: []
+    params: {}
+
+  - name: follow_the_trend_d1
+    mode: "off"
+    timeframe: 1d
     symbols: []
     params: {}
 
@@ -247,3 +271,87 @@ strategies:
     symbols: []
     params:
       period_ema: 9
+
+  - name: goldmine_xauusd
+    mode: "off"
+    timeframe: 1d
+    symbols: [GOLD]
+    params: {}
+
+  - name: speculative_zigzag_rsi
+    mode: "off"
+    timeframe: 15m
+    symbols: [EURUSD, GBPUSD]
+    params: {}
+
+  - name: parsar_awesome
+    mode: "off"
+    timeframe: 30m
+    symbols: [USDCHF, EURUSD]
+    params: {}
+
+  - name: cci_ema_psar
+    mode: "off"
+    timeframe: 1h
+    symbols: []
+    params: {}
+
+  - name: ema_adx_macd_contrarian
+    mode: "off"
+    timeframe: 4h
+    symbols: []
+    params: {}
+
+  - name: momentum_forex
+    mode: "off"
+    timeframe: 15m
+    symbols: []
+    params: {}
+
+  - name: psar_ao_ac
+    mode: "off"
+    timeframe: 1h
+    symbols: []
+    params: {}
+
+  - name: cci_ema_fixed
+    mode: "off"
+    timeframe: 30m
+    symbols: []
+    params: {}
+
+  - name: ema100_dual_tf
+    mode: "off"
+    timeframe: 15m
+    symbols: []
+    params: {}
+
+  - name: ichimoku_awesome
+    mode: "off"
+    timeframe: 1h
+    symbols: []
+    params: {}
+
+  - name: scalp_macd_stoch_10pt
+    mode: "off"
+    timeframe: 1m
+    symbols: []
+    params: {}
+
+  - name: ema200_awesome
+    mode: "off"
+    timeframe: 1h
+    symbols: []
+    params: {}
+
+  - name: bb_williams_rsi_ranging
+    mode: "off"
+    timeframe: 15m
+    symbols: []
+    params: {}
+
+  - name: triple_sma
+    mode: "off"
+    timeframe: 4h
+    symbols: []
+    params: {}

@@ -1,0 +1,59 @@
+name: Deploy to TrueNAS
+
+# Live-trading system: deploy is gated on tests passing, and only fires on
+# pushes to main. Feature branches iterate via PRs; merging to main is the
+# deploy trigger.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e ".[dev]"
+      - run: ruff check src tests
+      - run: mypy src
+      - run: python -m pytest
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    environment: truenas-production
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.TRUENAS_HOST }}
+          username: ${{ secrets.TRUENAS_SSH_USER }}
+          key: ${{ secrets.TRUENAS_SSH_KEY }}
+          port: ${{ secrets.TRUENAS_SSH_PORT || 22 }}
+          script_stop: true
+          script: |
+            set -euo pipefail
+            cd "${{ secrets.TRUENAS_REPO_PATH }}"
+
+            # Fail loudly instead of discarding drift: if someone made local
+            # changes on the box (e.g. hand-edited config), this refuses to
+            # clobber them rather than silently git-reset --hard over them.
+            git fetch origin main
+            git merge --ff-only origin/main
+
+            docker compose up -d --build
+
+            # Wait for the agent's heartbeat file to prove the new build
+            # actually came up healthy before declaring success.
+            for i in $(seq 1 30); do
+              if docker compose exec -T oracle test -f /app/data/status.json 2>/dev/null; then
+                echo "Deploy healthy."
+                exit 0
+              fi
+              sleep 2
+            done
+            echo "WARNING: status.json not observed within 60s of restart — check container logs." >&2
+            exit 1

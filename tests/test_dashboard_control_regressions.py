@@ -22,9 +22,13 @@ def test_partial_runtime_filter_override_keeps_configured_regime_policy():
 
 
 def test_dashboard_exposes_enforce_regime_veto_control_and_surfaces_strategy_errors():
-    static_path = Path(__file__).resolve().parent.parent / "src/gungnir/dashboard/static/index.html"
-    page = static_path.read_text()
+    """The dashboard was rewritten in React (src/gungnir/dashboard/react-src/);
+    the generated static/index.html is a minified bundle, so this checks the
+    JSX source of truth instead of grepping the bundle."""
+    root = Path(__file__).resolve().parent.parent
+    settings_src = (root / "src/gungnir/dashboard/react-src/tabs/Settings.jsx").read_text()
+    strategies_src = (root / "src/gungnir/dashboard/react-src/tabs/Strategies.jsx").read_text()
 
-    assert 'id="flt-regime-enforce"' in page
-    assert "regime_mode" in page and '"enforce"' in page
-    assert "Strategy mode update failed" in page
+    assert "Enforce regime veto" in settings_src
+    assert 'body.regime_mode = filters.regimeEnforce ? "enforce" : "shadow";' in settings_src
+    assert "Strategy mode update failed" in strategies_src
