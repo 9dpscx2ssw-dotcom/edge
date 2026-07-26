@@ -202,6 +202,23 @@ tbody tr:hover td { background: var(--panel2); }
 .signal-badge.sell { background: var(--bad); color: #fff; }
 .signal-status { font-size: 14px; font-weight: 600; }
 .signal-waiting { color: var(--text-muted); font-size: 12px; margin-top: 3px; }
+
+/* reason + freshness — under the title, above the sentiment/prediction/RL grid */
+.signal-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 9px; }
+.freshness { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; padding: 2px 8px 2px 6px; border-radius: 10px; }
+.freshness .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.freshness.fresh { color: var(--good); background: var(--good-soft); }
+.freshness.aging { color: var(--warn); background: var(--warn-soft); }
+.freshness.stale { color: var(--text-faint); background: var(--panel3); }
+.reason-row { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.reason-chip {
+  font-family: var(--font-mono); font-size: 10.5px; font-weight: 600; padding: 3px 7px;
+  background: var(--panel2); border: 1px solid var(--line); border-radius: 5px; color: var(--text-muted);
+  white-space: nowrap;
+}
+.reason-chip.trigger { color: var(--info); border-color: var(--info-soft); background: var(--info-soft); }
+.reason-none { font-size: 11.5px; color: var(--text-faint); font-style: italic; margin-top: 8px; }
+
 .signal-soft { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 12px; color: var(--text-muted); }
 .signal-soft-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
 .soft-lbl.magenta { color: var(--magenta); } .soft-lbl.blue { color: var(--blue); } .soft-lbl.purple { color: var(--purple); }

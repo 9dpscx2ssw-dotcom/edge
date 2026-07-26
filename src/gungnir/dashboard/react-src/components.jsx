@@ -82,3 +82,14 @@ export function SortTable({ columns, rows, initialSort, rowKey, className }) {
 export function ToggleBtn({ active, danger, onClick, title, children }) {
   return <button className={cx("toggle-btn", active && (danger ? "on-danger" : "on"))} title={title} onClick={onClick}>{children}</button>;
 }
+
+/** Re-renders every `intervalMs` so a component can show a live-ticking
+ * elapsed time (e.g. signal freshness) without polling a server. */
+export function useTicker(intervalMs = 1000) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), intervalMs);
+    return () => clearInterval(id);
+  }, [intervalMs]);
+  return now;
+}

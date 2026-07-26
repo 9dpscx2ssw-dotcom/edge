@@ -193,9 +193,11 @@ class CCIMACDStrategy(Strategy):
         macd = features.macd12_26
         conviction = min(abs(cci) / max(2 * thr, 1e-9), 1.0)
         if cci > thr and macd > 0:
-            return _sig(self, features, Side.BUY, conviction)
+            return _sig(self, features, Side.BUY, conviction,
+                        f"CCI(14)>+{thr:.0f}; MACD(12,26,2)>0")
         elif cci < -thr and macd < 0:
-            return _sig(self, features, Side.SELL, conviction)
+            return _sig(self, features, Side.SELL, conviction,
+                        f"CCI(14)<-{thr:.0f}; MACD(12,26,2)<0")
         return []
 
 
@@ -246,9 +248,11 @@ class _ParSARCCIBase(Strategy):
         ema = getattr(features, f"ema{self.ema_period}", 0.0)
 
         if features.sar > ema and cci > thr:
-            return _sig(self, features, Side.BUY, conviction)
+            return _sig(self, features, Side.BUY, conviction,
+                        f"SAR>EMA{self.ema_period}; CCI(45)>+{thr:.0f}")
         elif features.sar < ema and cci < -thr:
-            return _sig(self, features, Side.SELL, conviction)
+            return _sig(self, features, Side.SELL, conviction,
+                        f"SAR<EMA{self.ema_period}; CCI(45)<-{thr:.0f}")
         return []
 
 
@@ -289,9 +293,11 @@ class BBMACDStrategy(Strategy):
         # condition inverted (buy above mid on falling momentum), which showed
         # up live as a 1.8% win rate over 228 trades (audit F-16).
         if price > features.bb_mid and macd > 0:
-            return _sig(self, features, Side.BUY, conviction)
+            return _sig(self, features, Side.BUY, conviction,
+                        "price>BB-mid; MACD(11,27,4)>0")
         elif price < features.bb_mid and macd < 0:
-            return _sig(self, features, Side.SELL, conviction)
+            return _sig(self, features, Side.SELL, conviction,
+                        "price<BB-mid; MACD(11,27,4)<0")
         return []
 
 
@@ -367,10 +373,12 @@ class BBMACDSMAppStrategy(Strategy):
 
         if pending["side"] == Side.BUY and hist < 0:
             self._pending[symbol] = None   # one trade per confirmed cross
-            return _sig(self, features, Side.BUY, conviction)
+            return _sig(self, features, Side.BUY, conviction,
+                        "SMMA2 crossed up thru BB-mid; MACD-hist(11,27,4)<0 (lagging)")
         if pending["side"] == Side.SELL and hist > 0:
             self._pending[symbol] = None
-            return _sig(self, features, Side.SELL, conviction)
+            return _sig(self, features, Side.SELL, conviction,
+                        "SMMA2 crossed down thru BB-mid; MACD-hist(11,27,4)>0 (lagging)")
         return []
 
 
@@ -390,10 +398,12 @@ class CCI200EMAStrategy(Strategy):
         conviction = self.p("conviction_base")
         if (features.ema10 > features.ema21 > features.ema50
                 and cci > 0 and price > features.pivot):
-            return _sig(self, features, Side.BUY, conviction)
+            return _sig(self, features, Side.BUY, conviction,
+                        "EMA10>EMA21>EMA50; CCI(200)>0; price>pivot")
         elif (features.ema10 < features.ema21 < features.ema50
                 and cci < 0 and price < features.pivot):
-            return _sig(self, features, Side.SELL, conviction)
+            return _sig(self, features, Side.SELL, conviction,
+                        "EMA10<EMA21<EMA50; CCI(200)<0; price<pivot")
         return []
 
 
@@ -448,10 +458,12 @@ class CCI200EMAPivotAppStrategy(Strategy):
         conviction = self.p("conviction_base")
         if (features.ema10 > features.ema21 and features.ema10 > features.ema50
                 and cci > 0):
-            return _sig(self, features, Side.BUY, conviction)
+            return _sig(self, features, Side.BUY, conviction,
+                        "EMA10>EMA21; EMA10>EMA50; CCI(200)>0")
         elif (features.ema10 < features.ema21 and features.ema10 < features.ema50
                 and cci < 0):
-            return _sig(self, features, Side.SELL, conviction)
+            return _sig(self, features, Side.SELL, conviction,
+                        "EMA10<EMA21; EMA10<EMA50; CCI(200)<0")
         return []
 
     def custom_brackets(
@@ -542,11 +554,13 @@ class EMAStochRSIStrategy(Strategy):
         if (features.ema5 > features.ema10 and rsi > rsi_mid
                 and stoch_k < self.p("stoch_upper") and slope_up):
             self._entry_candles = features.candles
-            return _sig(self, features, Side.BUY, conviction)
+            return _sig(self, features, Side.BUY, conviction,
+                        "EMA5>EMA10; RSI>mid; Stoch%K/%D sloping up, clear of upper zone")
         elif (features.ema5 < features.ema10 and rsi < rsi_mid
                 and stoch_k > self.p("stoch_lower") and slope_down):
             self._entry_candles = features.candles
-            return _sig(self, features, Side.SELL, conviction)
+            return _sig(self, features, Side.SELL, conviction,
+                        "EMA5<EMA10; RSI<mid; Stoch%K/%D sloping down, clear of lower zone")
         return []
 
     def custom_brackets(
@@ -623,9 +637,11 @@ class CCIReversalStrategy(Strategy):
         prev = self._last_extreme.get(symbol)
         signal: list[Signal] = []
         if in_overbought and prev == "oversold":
-            signal = _sig(self, features, Side.BUY, conviction)
+            signal = _sig(self, features, Side.BUY, conviction,
+                        "CCI(14) overbought, confirming a prior oversold extreme")
         elif in_oversold and prev == "overbought":
-            signal = _sig(self, features, Side.SELL, conviction)
+            signal = _sig(self, features, Side.SELL, conviction,
+                        "CCI(14) oversold, confirming a prior overbought extreme")
 
         # Update the remembered extreme AFTER deciding — the confirmation
         # must compare against the zone touched BEFORE this bar, and this
@@ -672,9 +688,11 @@ class ADXMomentumStrategy(Strategy):
         # Trend strength grades conviction: barely-trending 0.4 → strong 0.8.
         conviction = 0.4 + 0.4 * min((adx - adx_thr) / max(adx_thr, 1e-9), 1.0)
         if features.plus_di > features.minus_di and mom > mom_mid and price > features.ema55:
-            return _sig(self, features, Side.BUY, conviction)
+            return _sig(self, features, Side.BUY, conviction,
+                        f"+DI>-DI; Momentum(14)>{mom_mid:.0f}; price>EMA55; ADX>{adx_thr:.0f}")
         elif features.plus_di < features.minus_di and mom < mom_mid and price < features.ema55:
-            return _sig(self, features, Side.SELL, conviction)
+            return _sig(self, features, Side.SELL, conviction,
+                        f"-DI>+DI; Momentum(14)<{mom_mid:.0f}; price<EMA55; ADX>{adx_thr:.0f}")
         return []
 
 
@@ -746,11 +764,13 @@ class BBRSICuttingStrategy(Strategy):
         if pending == "buy" and price > features.bb_lower:
             self._pending[symbol] = None
             self._entry_band, self._entry_mid = features.bb_lower, features.bb_mid
-            return _sig(self, features, Side.BUY, conviction)
+            return _sig(self, features, Side.BUY, conviction,
+                        "armed at lower BB w/ RSI(7)<30 & ADX<30; price closed back inside band")
         if pending == "sell" and price < features.bb_upper:
             self._pending[symbol] = None
             self._entry_band, self._entry_mid = features.bb_upper, features.bb_mid
-            return _sig(self, features, Side.SELL, conviction)
+            return _sig(self, features, Side.SELL, conviction,
+                        "armed at upper BB w/ RSI(7)>70 & ADX<30; price closed back inside band")
         return []
 
     def custom_brackets(
@@ -787,9 +807,11 @@ class AwesomeOscillatorStrategy(Strategy):
             return []
         conviction = self.p("conviction_base")
         if features.ao > 0 and features.macd_5_7 > 0:
-            return _sig(self, features, Side.BUY, conviction)
+            return _sig(self, features, Side.BUY, conviction,
+                        "AO>0; MACD(5,7,4)>0")
         elif features.ao < 0 and features.macd_5_7 < 0:
-            return _sig(self, features, Side.SELL, conviction)
+            return _sig(self, features, Side.SELL, conviction,
+                        "AO<0; MACD(5,7,4)<0")
         return []
 
 
@@ -833,9 +855,11 @@ class AwesomeMACDAppStrategy(Strategy):
         hist = features.macd_hist_5_7
 
         if crossed_down_thru_zero and hist > 0:
-            return _sig(self, features, Side.BUY, conviction)
+            return _sig(self, features, Side.BUY, conviction,
+                        "AO crossed down thru 0; MACD-hist(5,7,4) still >0")
         elif crossed_up_thru_zero and hist < 0:
-            return _sig(self, features, Side.SELL, conviction)
+            return _sig(self, features, Side.SELL, conviction,
+                        "AO crossed up thru 0; MACD-hist(5,7,4) still <0")
         return []
 
     def custom_brackets(
@@ -894,9 +918,11 @@ class _BBRSIBase(Strategy):
         rsi = features.rsi11
         conviction = self.p("conviction_base")
         if rsi > self.p("rsi_overbought") and price > features.bb_upper:
-            return _sig(self, features, Side.BUY, conviction)
+            return _sig(self, features, Side.BUY, conviction,
+                        "RSI(11)>70; price>BB-upper (momentum continuation)")
         elif rsi < self.p("rsi_oversold") and price < features.bb_lower:
-            return _sig(self, features, Side.SELL, conviction)
+            return _sig(self, features, Side.SELL, conviction,
+                        "RSI(11)<30; price<BB-lower (momentum continuation)")
         return []
 
     def custom_brackets(
@@ -944,10 +970,12 @@ class IntelligentTradingStrategy(Strategy):
         macd = features.macd12_26
         if (features.smma8 > features.smma18 and macd > 0
                 and features.stoch_k < stoch_mid and features.sar_trend > 0):
-            return _sig(self, features, Side.BUY, conviction)
+            return _sig(self, features, Side.BUY, conviction,
+                        "SMMA8>SMMA18; MACD(12,26)>0; Stoch%K<mid; SAR trend up")
         elif (features.smma8 < features.smma18 and macd < 0
                 and features.stoch_k > stoch_mid and features.sar_trend < 0):
-            return _sig(self, features, Side.SELL, conviction)
+            return _sig(self, features, Side.SELL, conviction,
+                        "SMMA8<SMMA18; MACD(12,26)<0; Stoch%K>mid; SAR trend down")
         return []
 
 
@@ -968,10 +996,12 @@ class MultiBBStrategy(Strategy):
         half = max(features.bb_upper - features.bb_mid, 1e-9)
         if price <= features.bb_lower:
             depth = min((features.bb_lower - price) / half, 1.0)
-            return _sig(self, features, Side.BUY, base + 0.3 * depth)
+            return _sig(self, features, Side.BUY, base + 0.3 * depth,
+                        "price≤BB-lower (dev2)")
         elif price >= features.bb_upper:
             depth = min((price - features.bb_upper) / half, 1.0)
-            return _sig(self, features, Side.SELL, base + 0.3 * depth)
+            return _sig(self, features, Side.SELL, base + 0.3 * depth,
+                        "price≥BB-upper (dev2)")
         return []
 
 
@@ -1029,11 +1059,13 @@ class MultiBBAppStrategy(Strategy):
         if features.bb3_lower <= price <= features.bb_lower:
             depth = min((features.bb_lower - price) / zone, 1.0)
             self._entry_candles = features.candles
-            return _sig(self, features, Side.BUY, base + 0.3 * depth)
+            return _sig(self, features, Side.BUY, base + 0.3 * depth,
+                        "price in dev2–dev3 band, lower side")
         elif features.bb_upper <= price <= features.bb3_upper:
             depth = min((price - features.bb_upper) / zone, 1.0)
             self._entry_candles = features.candles
-            return _sig(self, features, Side.SELL, base + 0.3 * depth)
+            return _sig(self, features, Side.SELL, base + 0.3 * depth,
+                        "price in dev2–dev3 band, upper side")
         return []
 
     def custom_brackets(
@@ -1083,9 +1115,11 @@ class MACDStochStrategy(Strategy):
         stoch_k = features.stoch_k
         conviction = self.p("conviction_base")
         if macd > 0 and stoch_k < self.p("stoch_lower"):
-            return _sig(self, features, Side.BUY, conviction)
+            return _sig(self, features, Side.BUY, conviction,
+                        "MACD(13,26,9)>0; Stoch%K<lower zone")
         elif macd < 0 and stoch_k > self.p("stoch_upper"):
-            return _sig(self, features, Side.SELL, conviction)
+            return _sig(self, features, Side.SELL, conviction,
+                        "MACD(13,26,9)<0; Stoch%K>upper zone")
         return []
 
 
@@ -1137,10 +1171,12 @@ class AlligatorStrategy(Strategy):
         conviction = self.p("conviction_base")
         if (features.alligator_lips > features.alligator_teeth > features.alligator_jaw
                 and price > features.sma144):
-            return _sig(self, features, Side.BUY, conviction)
+            return _sig(self, features, Side.BUY, conviction,
+                        "Alligator lips>teeth>jaw; price>SMA144")
         elif (features.alligator_lips < features.alligator_teeth < features.alligator_jaw
                 and price < features.sma144):
-            return _sig(self, features, Side.SELL, conviction)
+            return _sig(self, features, Side.SELL, conviction,
+                        "Alligator lips<teeth<jaw; price<SMA144")
         return []
 
 
@@ -1161,9 +1197,11 @@ class _HMADonchianBase(Strategy):
         stretch = min(abs(price - features.hma55) / atr, 1.0) if atr > 0 else 0.0
         conviction = base + 0.3 * stretch
         if price > features.hma55 and features.dc_trend > 0:
-            return _sig(self, features, Side.BUY, conviction)
+            return _sig(self, features, Side.BUY, conviction,
+                        "price>HMA55; Donchian(20) trend up")
         elif price < features.hma55 and features.dc_trend < 0:
-            return _sig(self, features, Side.SELL, conviction)
+            return _sig(self, features, Side.SELL, conviction,
+                        "price<HMA55; Donchian(20) trend down")
         return []
 
 
@@ -1211,10 +1249,12 @@ class _FVGBase(Strategy):
         conviction = self.p("conviction_base")
         if (features.fvg_bull_bot > 0
                 and features.fvg_bull_bot <= price <= features.fvg_bull_top):
-            return _sig(self, features, Side.BUY, conviction)
+            return _sig(self, features, Side.BUY, conviction,
+                        "price retraced into bullish Fair Value Gap")
         if (features.fvg_bear_bot > 0
                 and features.fvg_bear_bot <= price <= features.fvg_bear_top):
-            return _sig(self, features, Side.SELL, conviction)
+            return _sig(self, features, Side.SELL, conviction,
+                        "price retraced into bearish Fair Value Gap")
         return []
 
 
@@ -1259,9 +1299,11 @@ class _ScalpEMAVWAPBase(Strategy):
         conviction = self.p("conviction_base")
         min_gap = self.p("min_gap_bps")
         if gap_bps > min_gap:
-            return _sig(self, features, Side.BUY, conviction)
+            return _sig(self, features, Side.BUY, conviction,
+                        f"EMA5 {gap_bps:+.1f}bps above VWAP")
         elif gap_bps < -min_gap:
-            return _sig(self, features, Side.SELL, conviction)
+            return _sig(self, features, Side.SELL, conviction,
+                        f"EMA5 {gap_bps:+.1f}bps below VWAP")
         return []
 
 
@@ -1309,10 +1351,12 @@ class _FollowTheTrendBase(Strategy):
 
         if (features.plus_di28 > features.minus_di28 and crossed_up
                 and features.macd_5_10 > 0):
-            return _sig(self, features, Side.BUY, conviction)
+            return _sig(self, features, Side.BUY, conviction,
+                        "+DI(28)>-DI(28); EMA4↑EMA10; MACD(5,10,4)>0")
         elif (features.minus_di28 > features.plus_di28 and crossed_down
                 and features.macd_5_10 < 0):
-            return _sig(self, features, Side.SELL, conviction)
+            return _sig(self, features, Side.SELL, conviction,
+                        "-DI(28)>+DI(28); EMA4↓EMA10; MACD(5,10,4)<0")
         return []
 
     def custom_brackets(
@@ -1397,12 +1441,14 @@ class GoldmineXAUUSDStrategy(Strategy):
                 and features.stoch5_k > overbought and features.stoch5_d > overbought
                 and slope_down):
             self._entry_bb_mid = features.bb_mid
-            return _sig(self, features, Side.SELL, base)
+            return _sig(self, features, Side.SELL, base,
+                        "price≥BB-upper; bearish candle; Stoch(5,3,3) overbought & sloping down")
         elif (price <= features.bb_lower and candle.close > candle.open
                 and features.stoch5_k < oversold and features.stoch5_d < oversold
                 and slope_up):
             self._entry_bb_mid = features.bb_mid
-            return _sig(self, features, Side.BUY, base)
+            return _sig(self, features, Side.BUY, base,
+                        "price≤BB-lower; bullish candle; Stoch(5,3,3) oversold & sloping up")
         return []
 
     def custom_brackets(
@@ -1490,12 +1536,14 @@ class SpeculativeZigzagRSIStrategy(Strategy):
             if blocked == Side.SELL:
                 return []
             self._blocked_side.pop(symbol, None)
-            return _sig(self, features, Side.SELL, conviction)
+            return _sig(self, features, Side.SELL, conviction,
+                        "ZigZag swing high confirmed; RSI(14)>70")
         elif pivot_low is not None and rsi < self.p("rsi_oversold"):
             if blocked == Side.BUY:
                 return []
             self._blocked_side.pop(symbol, None)
-            return _sig(self, features, Side.BUY, conviction)
+            return _sig(self, features, Side.BUY, conviction,
+                        "ZigZag swing low confirmed; RSI(14)<30")
         return []
 
     def custom_brackets(
@@ -1541,9 +1589,11 @@ class ParSARAwesomeStrategy(Strategy):
         ao_green = features.ao > 0 and features.ao > features.prev_ao
         ao_red = features.ao < 0 and features.ao < features.prev_ao
         if features.sar < price and ao_green and features.ema5 < price:
-            return _sig(self, features, Side.BUY, conviction)
+            return _sig(self, features, Side.BUY, conviction,
+                        "SAR<price; AO green & rising; EMA5<price")
         elif features.sar > price and ao_red and features.ema5 > price:
-            return _sig(self, features, Side.SELL, conviction)
+            return _sig(self, features, Side.SELL, conviction,
+                        "SAR>price; AO red & falling; EMA5>price")
         return []
 
     def custom_brackets(
@@ -1593,9 +1643,11 @@ class CCIEMAPSARStrategy(Strategy):
         crossed_up = _crossed_up(features.prev_ema8, features.prev_ema28, features.ema8, features.ema28)
         crossed_down = _crossed_down(features.prev_ema8, features.prev_ema28, features.ema8, features.ema28)
         if crossed_up and features.cci30 > 0:
-            return _sig(self, features, Side.BUY, conviction)
+            return _sig(self, features, Side.BUY, conviction,
+                        "EMA8↑EMA28; CCI(30)>0")
         elif crossed_down and features.cci30 < 0:
-            return _sig(self, features, Side.SELL, conviction)
+            return _sig(self, features, Side.SELL, conviction,
+                        "EMA8↓EMA28; CCI(30)<0")
         return []
 
 
@@ -1637,10 +1689,12 @@ class EMAADXMACDContrarianStrategy(Strategy):
         crossed_down = _crossed_down(features.prev_ema4, features.prev_ema10, features.ema4, features.ema10)
         if (crossed_down and features.macd_5_10 < 0
                 and features.minus_di28 > features.plus_di28):
-            return _sig(self, features, Side.BUY, conviction)
+            return _sig(self, features, Side.BUY, conviction,
+                        "EMA4↓EMA10; MACD(5,10,4)<0; -DI(28)>+DI(28) (contrarian dip-buy)")
         elif (crossed_up and features.macd_5_10 > 0
                 and features.plus_di28 > features.minus_di28):
-            return _sig(self, features, Side.SELL, conviction)
+            return _sig(self, features, Side.SELL, conviction,
+                        "EMA4↑EMA10; MACD(5,10,4)>0; +DI(28)>-DI(28) (contrarian)")
         return []
 
     def custom_brackets(
@@ -1692,10 +1746,12 @@ class MomentumForexStrategy(Strategy):
         mom_down = features.prev_momentum30 >= 100.0 > features.momentum30
         if (mom_up and features.sma11 > features.sma21
                 and price > features.sma11 and price > features.sma21):
-            return _sig(self, features, Side.BUY, conviction)
+            return _sig(self, features, Side.BUY, conviction,
+                        "Momentum(30)↑crossed 100; SMA11>SMA21; price above both")
         elif (mom_down and features.sma11 < features.sma21
                 and price < features.sma11 and price < features.sma21):
-            return _sig(self, features, Side.SELL, conviction)
+            return _sig(self, features, Side.SELL, conviction,
+                        "Momentum(30)↓crossed 100; SMA11<SMA21; price below both")
         return []
 
 
@@ -1733,10 +1789,12 @@ class PSARAOAcStrategy(Strategy):
         ac_up, ac_down = features.ac > features.prev_ac, features.ac < features.prev_ac
         if features.sar < price and ao_up and ac_up:
             self._entry_candle = features.candles[-1]
-            return _sig(self, features, Side.BUY, conviction)
+            return _sig(self, features, Side.BUY, conviction,
+                        "SAR<price; AO rising; AC rising")
         elif features.sar > price and ao_down and ac_down:
             self._entry_candle = features.candles[-1]
-            return _sig(self, features, Side.SELL, conviction)
+            return _sig(self, features, Side.SELL, conviction,
+                        "SAR>price; AO falling; AC falling")
         return []
 
     def custom_brackets(
@@ -1783,9 +1841,11 @@ class CCIEMAFixedStrategy(Strategy):
         crossed_up = _crossed_up(features.prev_ema8, features.prev_ema28, features.ema8, features.ema28)
         crossed_down = _crossed_down(features.prev_ema8, features.prev_ema28, features.ema8, features.ema28)
         if crossed_up and features.cci30 > 0:
-            return _sig(self, features, Side.BUY, conviction)
+            return _sig(self, features, Side.BUY, conviction,
+                        "EMA8↑EMA28; CCI(30)>0")
         elif crossed_down and features.cci30 < 0:
-            return _sig(self, features, Side.SELL, conviction)
+            return _sig(self, features, Side.SELL, conviction,
+                        "EMA8↓EMA28; CCI(30)<0")
         return []
 
     def custom_brackets(
@@ -1835,9 +1895,11 @@ class EMA100DualTFStrategy(Strategy):
         crossed_up = _crossed_up(features.prev_ema5, features.prev_ema100, features.ema5, features.ema100)
         crossed_down = _crossed_down(features.prev_ema5, features.prev_ema100, features.ema5, features.ema100)
         if crossed_up and confirm.ema5 > confirm.ema100:
-            return _sig(self, features, Side.BUY, conviction)
+            return _sig(self, features, Side.BUY, conviction,
+                        "M15 EMA5↑EMA100; H1 EMA5>EMA100 confirm")
         elif crossed_down and confirm.ema5 < confirm.ema100:
-            return _sig(self, features, Side.SELL, conviction)
+            return _sig(self, features, Side.SELL, conviction,
+                        "M15 EMA5↓EMA100; H1 EMA5<EMA100 confirm")
         return []
 
     def custom_brackets(
@@ -1883,9 +1945,11 @@ class IchimokuAwesomeStrategy(Strategy):
         ao_red = features.ao < 0 and features.ao < features.prev_ao
         self._candles = features.candles
         if candle.close > features.senkou_b and ao_green:
-            return _sig(self, features, Side.BUY, conviction)
+            return _sig(self, features, Side.BUY, conviction,
+                        "close>Senkou Span B; AO green & rising")
         elif candle.close < features.senkou_b and ao_red:
-            return _sig(self, features, Side.SELL, conviction)
+            return _sig(self, features, Side.SELL, conviction,
+                        "close<Senkou Span B; AO red & falling")
         return []
 
     def custom_brackets(
@@ -1947,9 +2011,11 @@ class ScalpMACDStoch10PtStrategy(Strategy):
                       or (features.prev_stoch5_d > 80 and features.stoch5_d <= 80))
         self._candles = features.candles
         if features.macd_hist_13_26 > 0 and stoch_recovered:
-            return _sig(self, features, Side.BUY, conviction)
+            return _sig(self, features, Side.BUY, conviction,
+                        "MACD-hist(13,26,9)>0; Stoch recovered above 20")
         elif features.macd_hist_13_26 < 0 and stoch_fell:
-            return _sig(self, features, Side.SELL, conviction)
+            return _sig(self, features, Side.SELL, conviction,
+                        "MACD-hist(13,26,9)<0; Stoch fell below 80")
         return []
 
     def custom_brackets(
@@ -2000,9 +2066,11 @@ class EMA200AwesomeStrategy(Strategy):
         ao_red = features.ao < 0 and features.ao < features.prev_ao
         self._candles = features.candles
         if price > features.ema200 and ao_green:
-            return _sig(self, features, Side.BUY, conviction)
+            return _sig(self, features, Side.BUY, conviction,
+                        "price>EMA200; AO green & rising")
         elif price < features.ema200 and ao_red:
-            return _sig(self, features, Side.SELL, conviction)
+            return _sig(self, features, Side.SELL, conviction,
+                        "price<EMA200; AO red & falling")
         return []
 
     def custom_brackets(
@@ -2076,10 +2144,12 @@ class BBWilliamsRSIRangingStrategy(Strategy):
         wr_down = features.prev_williams_r25 >= -20.0 > features.williams_r25
         if rsi_up and wr_up and price <= features.bb_lower:
             self._entry_bb_mid = features.bb_mid
-            return _sig(self, features, Side.BUY, conviction)
+            return _sig(self, features, Side.BUY, conviction,
+                        "RSI(5)↑30; Williams%R(25)↑-80; price≤BB-lower")
         elif rsi_down and wr_down and price >= features.bb_upper:
             self._entry_bb_mid = features.bb_mid
-            return _sig(self, features, Side.SELL, conviction)
+            return _sig(self, features, Side.SELL, conviction,
+                        "RSI(5)↓70; Williams%R(25)↓-20; price≥BB-upper")
         return []
 
     def custom_brackets(
@@ -2125,9 +2195,11 @@ class TripleSMAStrategy(Strategy):
         crossed_up = _crossed_up(features.prev_sma26, features.prev_sma100, features.sma26, features.sma100)
         crossed_down = _crossed_down(features.prev_sma26, features.prev_sma100, features.sma26, features.sma100)
         if crossed_up and features.sma13 > features.sma26 and features.sma13 > features.sma100:
-            return _sig(self, features, Side.BUY, conviction)
+            return _sig(self, features, Side.BUY, conviction,
+                        "SMA26↑SMA100; SMA13 above both")
         elif crossed_down and features.sma13 < features.sma26 and features.sma13 < features.sma100:
-            return _sig(self, features, Side.SELL, conviction)
+            return _sig(self, features, Side.SELL, conviction,
+                        "SMA26↓SMA100; SMA13 below both")
         return []
 
 

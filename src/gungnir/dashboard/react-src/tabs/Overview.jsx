@@ -1,8 +1,39 @@
 import React, { useMemo } from "react";
-import { Card, Badge, usePoll, Empty } from "../components.jsx";
+import { Card, Badge, usePoll, Empty, useTicker } from "../components.jsx";
 import { EquityChart } from "../charts.jsx";
-import { usd, signed, cx } from "../format.js";
+import { usd, signed, cx, ageLabel, freshnessBand } from "../format.js";
 import { post } from "../api.js";
+
+/** Freshness chip: how long ago the strategy actually fired, ticking live.
+ * Color band scales to the strategy's own timeframe (see freshnessBand). */
+function SignalFreshness({ ts, timeframe }) {
+  const now = useTicker(1000);
+  if (!ts) return null;
+  const ageMs = now - new Date(ts).getTime();
+  if (ageMs < 0) return null;
+  const band = freshnessBand(ageMs, timeframe);
+  return (
+    <span className={cx("freshness", band)}>
+      <span className={cx("dot", band === "fresh" && "pulse")} />
+      {ageLabel(ageMs)}
+    </span>
+  );
+}
+
+/** Reason chips parsed from Signal.rationale (semicolon-separated condition
+ * clauses, e.g. "EMA9↑EMA21; close>EMA55; ADX>25"). The first clause is the
+ * actual trigger (the crossover/threshold cross) and gets the accent chip;
+ * the rest are confirming conditions. Strategies that don't populate a
+ * rationale yet fall back to an honest note rather than a fabricated one. */
+function SignalReasons({ rationale }) {
+  const clauses = (rationale || "").split(";").map((c) => c.trim()).filter(Boolean);
+  if (!clauses.length) return <div className="reason-none">no rationale recorded for this strategy</div>;
+  return (
+    <div className="reason-row">
+      {clauses.map((c, i) => <span key={i} className={cx("reason-chip", i === 0 && "trigger")}>{c}</span>)}
+    </div>
+  );
+}
 
 function ConsensusStrip({ views }) {
   const rows = useMemo(() => Object.entries(views || {})
@@ -112,7 +143,14 @@ export default function Overview({ status, reload }) {
                 <div className="signal-status">
                   {bt.symbol ? <>{dir} {bt.symbol}{bt.strategy_name ? " · " + bt.strategy_name : ""}{px != null ? " @ " + px : ""}</> : "No active signal"}
                 </div>
-                <div className="signal-waiting">{bt.symbol ? ((s.signal || {}).analysis || "—") : "Waiting for the agent…"}</div>
+                {bt.symbol ? (
+                  <>
+                    <div className="signal-meta"><SignalFreshness ts={bt.ts} timeframe={bt.timeframe} /></div>
+                    <SignalReasons rationale={(s.signal || {}).analysis} />
+                  </>
+                ) : (
+                  <div className="signal-waiting">Waiting for the agent…</div>
+                )}
                 {hasSoft && (
                   <div className="signal-soft">
                     <div className="signal-soft-grid">

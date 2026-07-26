@@ -2031,6 +2031,7 @@ class Agent:
                         "direction": signal.side.value,
                         "symbol": signal.symbol,
                         "strategy_name": strat.name,
+                        "timeframe": strat.timeframe,
                         "ts": signal.ts.isoformat(),
                     },
                     "analysis": signal.rationale,
